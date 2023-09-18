@@ -30,4 +30,24 @@
 
 static uint32_t IBUF[HEIGHT*WIDTH];
 
+struct Vec {        
+   double x, y, z;                  
+   Vec(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
+};
+
+struct Color {        
+   double r, g, b;                  
+   Color(double r_=0, double g_=0, double b_=0){ r=r_; g=g_; b=b_; }
+};
+
+/* Ray
+ *
+ * A ray is a parametric line with an origin (o) and a direction (d). 
+ * A point along the ray can be defined using a parameter, t:
+ * p(t) = o + t*d
+*/
+struct Ray { Vec o, d; Ray(Vec o_, Vec d_) : o(o_), d(d_) {} };
+
+void c_naive_path_tracer(Ray ray, int depth);
+
 #endif
