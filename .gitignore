@@ -1,0 +1,6 @@
+*.o
+.sconsign.dblite
+render
+
+# images
+*.png
