@@ -1,1 +1,1 @@
-Program(['render.cc', 'carbon.cc', 'carbon.h'])
+Program(['render.cc', 'carbon.cc', 'carbon.h', 'scene.cc'])
