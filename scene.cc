@@ -4,11 +4,12 @@
 
 double c_sphere_intersect(c_ray r, c_sphere sp, double &t) 
 {
-  vec3 oc = r.o - sp.pos;
-  vec3 a = r.d.pow(); 
-  vec3 b = (r.d * 2.0).mul(&oc);
-  vec3 c = oc.pow() - (sp.radius * sp.radius);
+  vec3d oc = r.o - sp.pos;
+  double a = r.d.dot(&r.d); 
+  double b = (r.d * 2.0).dot(&oc);
+  double c = oc.dot(&oc) - (sp.radius * sp.radius);
 
-  double sd = b.mul(&b) - (a * 4.0).mul(&c);
-  if (sd < 0.0) return t;
+  double sd = b * b - (a * 4.0 * c);
+  if (sd < 0.0) return -1.0;
+  else return (-b - sqrt(sd)) / (2.0 * a);
 }

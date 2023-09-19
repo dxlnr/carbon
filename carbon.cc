@@ -1,19 +1,21 @@
 #include "carbon.h"
 
-vec3 radiance(c_ray ray, int isect, int t)
-{
-}
+/* vec3d radiance(c_ray ray, int isect, int t) */
+/* { */
+/* } */
 
 void c_path_tracer(uint32_t *img, uint32_t w, uint32_t h, int samps)
 {
-  c_ray cam = c_ray(vec3(w * 0.5, h * 0.35, 100), vec3(0, -0.4, -1).norm());
+  c_ray cam = c_ray(vec3d(w * 0.5, h * 0.5, 100), vec3d(0, -0.4, -1).norm());
 
   for (int i = 0; i < w*h; ++i) {
-    vec3 c;
-    for (int k = 0; k < samps; ++k) {
+    vec3d c;
 
-    }
-    c = c / samps;
+
+    /* for (int k = 0; k < samps; ++k) { */
+
+    /* } */
+    /* c = c / samps; */
     img[i] = C_RGBA((int) c.x, (int) c.y, (int) c.z, 255);
   }
 

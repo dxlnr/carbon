@@ -34,19 +34,19 @@ typedef enum c_material {
 
 struct c_sphere {
   double radius;
-  vec3 pos;
-  vec3 color;
-  vec3 emission;
+  vec3d pos;
+  vec3d color;
+  vec3d emission;
   c_material_t material;
 };
 
 double c_sphere_intersect(c_ray ray, c_sphere sphere);
 
 struct c_plane {
-  vec3 normal;
-  vec3 pos;
-  vec3 color;
-  vec3 emission;
+  vec3d normal;
+  vec3d pos;
+  vec3d color;
+  vec3d emission;
   c_material_t material;
 };
 

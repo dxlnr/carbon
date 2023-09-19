@@ -33,19 +33,21 @@
                             (((a)&0xFF)<<(8*3)))
 
 /* Basic data structures */
-struct vec3 {        
+struct vec3d {        
   double x, y, z;                  
-  vec3(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
+  vec3d(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
   /* provide operators */
-  vec3 operator+(const vec3 &v) const { return vec3(x + v.x, y + v.y, z + v.z); }
-  vec3 operator-(const vec3 &v) const { return vec3(x - v.x, y - v.y, z - v.z); }
-  vec3 operator*(double v) const { return vec3(x * v, y * v, z * v); }
-  vec3 operator/(double v) const { return vec3(x * 1/v, y * 1/v, z * 1/v); }
+  vec3d operator+(const vec3d &v) const { return vec3d(x + v.x, y + v.y, z + v.z); }
+  vec3d operator-(const vec3d &v) const { return vec3d(x - v.x, y - v.y, z - v.z); }
+  vec3d operator*(double v) const { return vec3d(x * v, y * v, z * v); }
+  vec3d operator/(double v) const { return vec3d(x * 1/v, y * 1/v, z * 1/v); }
   /* normalize vector */
-  vec3 norm() const { return *this / sqrt(x*x + y*y + z*z); }
-  /* multiple & power functions */
-  vec3 mul(vec3 *v) const { return vec3(x*v->x, y*v->y, z*v->z); }
-  vec3 pow() const { return vec3(x*x, y*y, z*z); }
+  vec3d norm() const { return *this / sqrt(x*x + y*y + z*z); }
+  /* multiple & power function */
+  vec3d mul(vec3d *v) const { return vec3d(x*v->x, y*v->y, z*v->z); }
+  vec3d pow() const { return vec3d(x*x, y*y, z*z); }
+
+  double dot(vec3d *v) const { return (x*v->x + y*v->y + z*v->z); }
 };
 
 /* 
@@ -56,8 +58,8 @@ struct vec3 {
  * p(t) = o + t*d
 */
 struct c_ray { 
-  vec3 o, d; 
-  c_ray(vec3 o_, vec3 d_) : o(o_), d(d_) {} 
+  vec3d o, d; 
+  c_ray(vec3d o_, vec3d d_) : o(o_), d(d_) {} 
 };
 
 void c_path_tracer(uint32_t *img, uint32_t w, uint32_t h, int samps);
