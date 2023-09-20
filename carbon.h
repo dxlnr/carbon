@@ -24,6 +24,7 @@
 #ifndef CARBON_C_
 #define CARBON_C_ 
 
+#include <stdio.h>
 #include <stdint.h>
 #include <math.h>
 
@@ -38,6 +39,7 @@ struct vec3d {
   vec3d(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
   /* provide operators */
   vec3d operator+(const vec3d &v) const { return vec3d(x + v.x, y + v.y, z + v.z); }
+  vec3d operator+(double v) const { return vec3d(x + v, y + v, z + v); }
   vec3d operator-(const vec3d &v) const { return vec3d(x - v.x, y - v.y, z - v.z); }
   vec3d operator*(double v) const { return vec3d(x * v, y * v, z * v); }
   vec3d operator/(double v) const { return vec3d(x * 1/v, y * 1/v, z * 1/v); }

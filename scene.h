@@ -38,9 +38,20 @@ struct c_sphere {
   vec3d color;
   vec3d emission;
   c_material_t material;
+
+  double intersect(c_ray r) {
+    vec3d oc = r.o - this->pos;
+    double a = r.d.dot(&r.d); 
+    double b = (r.d * 2.0).dot(&oc);
+    double c = oc.dot(&oc) - (this->radius * this->radius);
+
+    double sd = b * b - (a * 4.0 * c);
+    if (sd < 0.0) return -1.0;
+    else return (-b - sqrt(sd)) / (2.0 * a);
+  }
 };
 
-double c_sphere_intersect(c_ray ray, c_sphere sphere);
+int c_sphere_ray_intersect(c_ray ray, c_sphere sphere);
 
 struct c_plane {
   vec3d normal;
