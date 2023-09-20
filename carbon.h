@@ -45,10 +45,9 @@ struct vec3d {
   vec3d operator/(double v) const { return vec3d(x * 1/v, y * 1/v, z * 1/v); }
   /* normalize vector */
   vec3d norm() const { return *this / sqrt(x*x + y*y + z*z); }
-  /* multiple & power function */
+  /* additional functions */
   vec3d mul(vec3d *v) const { return vec3d(x*v->x, y*v->y, z*v->z); }
   vec3d pow() const { return vec3d(x*x, y*y, z*z); }
-
   double dot(vec3d *v) const { return (x*v->x + y*v->y + z*v->z); }
 };
 
@@ -65,5 +64,40 @@ struct c_ray {
 };
 
 void c_path_tracer(uint32_t *img, uint32_t w, uint32_t h, int samps);
+
+
+inline double degrees_to_radians(double degrees) {
+  return degrees * M_PI / 180.0;
+}
+
+struct cam {
+  uint32_t w, h;
+  /* Count of random samples for each pixel */
+  uint32_t samples_per_pixel = 10;
+  /* Maximum number of ray bounces into scene */
+  uint32_t maxd              = 10;
+  /* Vertical view angle (field of view) */
+  double vfov                = 90;
+
+  void init(uint32_t w_, uint32_t h_) {
+    w = w_;
+    h = h_;
+
+    vec3d center = vec3d(0, 0, 0);
+
+    double focal_l = 1.0;
+    double theta = degrees_to_radians(vfov);
+    double h = tan(theta / 2);
+    double vp_h = 2 * h * focal_l;
+    double vp_w = vp_h * (static_cast<double>(w) / h);
+
+    vec3d vu = vec3d(vp_w, 0, 0);
+    vec3d vv = vec3d(0, -vp_h, 0);
+
+    vec3d vp_up_left = center - vec3d(0, 0, focal_l) - vu / 2 - vv / 2;
+    vec3d p0 = vp_up_left + (vu / w + vv / h) * 0.5;
+
+  }
+};
 
 #endif
