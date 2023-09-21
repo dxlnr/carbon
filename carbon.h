@@ -33,22 +33,37 @@
                             (((b)&0xFF)<<(8*2)) |\
                             (((a)&0xFF)<<(8*3)))
 
+/* Helper functions */
+inline double degr_to_rad(double degrees) {
+  return degrees * M_PI / 180.0;
+}
+
+inline double randd() {
+    return rand() / (RAND_MAX + 1.0);
+}
+
+inline double randd(double min, double max) {
+    return min + (max-min) * (rand() / (RAND_MAX + 1.0));
+}
+
 /* Basic data structures */
 struct vec3d {        
   double x, y, z;                  
   vec3d(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
   /* operators */
-  vec3d operator+(const vec3d &v) const { return vec3d(x + v.x, y + v.y, z + v.z); }
-  vec3d operator+(double v)       const { return vec3d(x + v, y + v, z + v); }
-  vec3d operator-(const vec3d &v) const { return vec3d(x - v.x, y - v.y, z - v.z); }
-  vec3d operator*(double v)       const { return vec3d(x * v, y * v, z * v); }
-  vec3d operator/(double v)       const { return vec3d(x * 1/v, y * 1/v, z * 1/v); }
+  vec3d operator +  (const vec3d &v)  const { return vec3d(x + v.x, y + v.y, z + v.z); }
+  vec3d operator += (const vec3d &v)  const { return vec3d(x + v.x, y + v.y, z + v.z); }
+  vec3d operator +  (double v)        const { return vec3d(x + v, y + v, z + v); }
+  vec3d operator -  (const vec3d &v)  const { return vec3d(x - v.x, y - v.y, z - v.z); }
+  vec3d operator *  (double v)        const { return vec3d(x * v, y * v, z * v); }
+  vec3d operator /  (double v)        const { return vec3d(x * 1/v, y * 1/v, z * 1/v); }
+  vec3d operator /= (double v)        const { return vec3d(x * 1/v, y * 1/v, z * 1/v); }
   /* normalize vector */
-  vec3d norm()                    const { return *this / sqrt(x*x + y*y + z*z); }
+  vec3d norm()                     const { return *this / sqrt(x*x + y*y + z*z); }
   /* additional functions */
-  vec3d mul(vec3d *v)             const { return vec3d(x*v->x, y*v->y, z*v->z); }
-  vec3d pow()                     const { return vec3d(x*x, y*y, z*z); }
-  double dot(vec3d *v)            const { return (x*v->x + y*v->y + z*v->z); }
+  vec3d mul(vec3d *v)              const { return vec3d(x*v->x, y*v->y, z*v->z); }
+  vec3d pow()                      const { return vec3d(x*x, y*y, z*z); }
+  double dot(vec3d *v)             const { return (x*v->x + y*v->y + z*v->z); }
 };
 
 /* 
@@ -66,16 +81,13 @@ struct c_ray {
 void c_path_tracer(uint32_t *img, uint32_t w, uint32_t h, int samps);
 
 
-inline double degrees_to_radians(double degrees) {
-  return degrees * M_PI / 180.0;
-}
 
 struct cam {
   uint32_t w, h;
   /* Camera origin */
   vec3d origin;
   /* Count of random samples for each pixel */
-  uint32_t samples_per_pixel = 10;
+  uint32_t samples_per_pixel = 100;
   /* Maximum number of ray bounces into scene */
   uint32_t maxd              = 10;
   /* Vertical view angle (field of view) */
@@ -100,9 +112,16 @@ struct cam {
     this->p0 = vp_up_left + (vu / w + vv / h) * 0.5;
   }
 
+  vec3d sample_pixel_sqr() const {
+    double px = -0.5 + randd();
+    double py = -0.5 + randd();
+    return (this->vu / w * px) + (this->vv / h * py);
+  }
+
   c_ray get_ray(int x_, int y_) {
     vec3d r = this->p0 + (this->vu / w * x_) + (this->vv/ h * y_) - this->origin;
-    return c_ray(this->origin, r.norm());
+    vec3d s = sample_pixel_sqr();
+    return c_ray(s - this->origin, r.norm());
   }
 
 private:

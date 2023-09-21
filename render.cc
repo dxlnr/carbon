@@ -4,7 +4,7 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
-#define WIDTH 400 
+#define WIDTH 400
 #define HEIGHT 225
 
 uint32_t IBUF[HEIGHT*WIDTH];
