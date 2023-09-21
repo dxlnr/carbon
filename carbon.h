@@ -97,9 +97,6 @@ struct cam {
     origin = vec3d(0, 0, 0);
 
     double focal_l = 1.0;
-    /* double theta = degrees_to_radians(vfov); */
-    /* double h = tan(theta / 2); */
-    /* double vp_h = 2 * h * focal_l; */
     double vp_h =  2.0;
     double vp_w = vp_h * (static_cast<double>(w) / h);
 
@@ -110,12 +107,14 @@ struct cam {
     this->p0 = vp_up_left + (vu / w + vv / h) * 0.5;
   }
 
+  /* Sample around each pixel */
   vec3d sample_pixel_sqr() const {
     double px = -0.5 + randd();
     double py = -0.5 + randd();
     return (this->vu / w * px) + (this->vv / h * py);
   }
 
+  /* Get ray for pixel at (x_, y_) */
   c_ray get_ray(int x_, int y_) {
     vec3d r = this->p0 + (this->vu / w * x_) + (this->vv/ h * y_) - this->origin;
     vec3d s = sample_pixel_sqr();

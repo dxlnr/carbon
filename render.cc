@@ -32,10 +32,62 @@
 
 uint32_t IBUF[HEIGHT*WIDTH];
 
+int intersect(c_ray ray, c_scene_t *scene, double *t, int *id)
+{
+  double dt;
+  double inf=*t=1e20;
+
+  for (int k = 0; k < scene->num_spheres; ++k) {
+    if ((dt = scene->spheres[k].intersect(ray)) && dt < *t) {
+      *t = dt;
+      *id = k;
+    }
+  }
+  return *t < inf;
+}
+
+vec3d radiance(c_ray r, c_scene_t *scene, int depth)
+{
+  int id = 0;
+  double t;
+
+  if (depth >= 1000) return vec3d(0, 0, 0);
+  if (!intersect(r, scene, &t, &id)) return vec3d(0, 0, 0);
+
+  c_sphere obj = scene->spheres[id];
+
+  printf("t: %f\n", t);
+
+  /* vec3d x = r.o + r.d * t; */
+  /* /1* vec3d em = obj.emission; *1/ */
+
+  /* // Pick a random direction from here and keep going. */
+  /* Ray newRay; */
+  /* newRay.origin = ray.pointWhereObjWasHit; */
+
+  /* // This is NOT a cosine-weighted distribution! */
+  /* newRay.direction = RandomUnitVectorInHemisphereOf(ray.normalWhereObjWasHit); */
+
+  /* // Probability of the newRay */
+  /* const float p = 1 / (2 * PI); */
+
+  /* // Compute the BRDF for this ray (assuming Lambertian reflection) */
+  /* float cos_theta = DotProduct(newRay.direction, ray.normalWhereObjWasHit); */
+  /* Color BRDF = material.reflectance / PI; */
+
+  /* // Recursively trace reflected light sources. */
+  /* Color incoming = TracePath(newRay, depth + 1); */
+
+  /* // Apply the Rendering Equation here. */
+  /* return emittance + (BRDF * incoming * cos_theta / p); */
+  vec3d c = vec3d(0, 0, 0);
+  return c;
+}
 
 void c_path_tracer(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene)
 {
   vec3d c = vec3d(0, 0, 0);
+  int id = 0;
   double t;
 
   cam cam;
@@ -46,10 +98,10 @@ void c_path_tracer(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene)
     for (int i = 0; i < w; ++i) {
       for (int s= 0; s < cam.samples_per_pixel; ++s) {
         c_ray r = cam.get_ray(i, j);
-        for (int k = 0; k < scene->num_spheres; ++k) {
-          t = scene->spheres[k].intersect(r);
-          if (t != -1.0)
-            c = c + scene->spheres[k].color;
+
+        radiance(r, scene, 0);
+        if (intersect(r, scene, &t, &id)) {
+          c = c + scene->spheres[id].color;
         }
       }
       c = c / cam.samples_per_pixel;
@@ -63,8 +115,9 @@ void c_path_tracer(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene)
 int main() 
 {
   c_sphere spheres[] = {
+    {.20, vec3d(1, 0, 1), vec3d(5, 45, 240), vec3d(10, 10, 10), SOLID },
+    {.15, vec3d(0.2, 0, 0.75), vec3d(90, 45, 20), vec3d(10, 10, 10), SOLID },
     {.25, vec3d(0, 0, 1), vec3d(255, 255, 255), vec3d(10, 10, 10), SOLID },
-    {.20, vec3d(1, 0, 1), vec3d(5, 45, 240), vec3d(10, 10, 10), SOLID }
   };
   c_scene_t scene = {
     .spheres = spheres,

@@ -64,3 +64,4 @@ end for
 
 ## Notes
 - [Scratchapixel 3.0](https://www.scratchapixel.com/): Introduces to computer graphics
+- [Ray Tracing in One Weekend: The Book Series](https://raytracing.github.io/)

@@ -46,12 +46,10 @@ struct c_sphere {
     double c = oc.dot(&oc) - (this->radius * this->radius);
 
     double sd = b * b - (a * 4.0 * c);
-    if (sd < 0.0) return -1.0;
+    if (sd < 0) return 0;
     else return (-b - sqrt(sd)) / (2.0 * a);
   }
 };
-
-int c_sphere_ray_intersect(c_ray ray, c_sphere sphere);
 
 struct c_plane {
   vec3d normal;
@@ -65,5 +63,7 @@ typedef struct c_scene {
   c_sphere *spheres;
   uint32_t num_spheres;
 } c_scene_t;
+
+int intersect(c_ray ray, c_scene_t *scene, double *t, int *id);
 
 #endif // SCENE_C_
