@@ -37,18 +37,18 @@
 struct vec3d {        
   double x, y, z;                  
   vec3d(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
-  /* provide operators */
+  /* operators */
   vec3d operator+(const vec3d &v) const { return vec3d(x + v.x, y + v.y, z + v.z); }
-  vec3d operator+(double v) const { return vec3d(x + v, y + v, z + v); }
+  vec3d operator+(double v)       const { return vec3d(x + v, y + v, z + v); }
   vec3d operator-(const vec3d &v) const { return vec3d(x - v.x, y - v.y, z - v.z); }
-  vec3d operator*(double v) const { return vec3d(x * v, y * v, z * v); }
-  vec3d operator/(double v) const { return vec3d(x * 1/v, y * 1/v, z * 1/v); }
+  vec3d operator*(double v)       const { return vec3d(x * v, y * v, z * v); }
+  vec3d operator/(double v)       const { return vec3d(x * 1/v, y * 1/v, z * 1/v); }
   /* normalize vector */
-  vec3d norm() const { return *this / sqrt(x*x + y*y + z*z); }
+  vec3d norm()                    const { return *this / sqrt(x*x + y*y + z*z); }
   /* additional functions */
-  vec3d mul(vec3d *v) const { return vec3d(x*v->x, y*v->y, z*v->z); }
-  vec3d pow() const { return vec3d(x*x, y*y, z*z); }
-  double dot(vec3d *v) const { return (x*v->x + y*v->y + z*v->z); }
+  vec3d mul(vec3d *v)             const { return vec3d(x*v->x, y*v->y, z*v->z); }
+  vec3d pow()                     const { return vec3d(x*x, y*y, z*z); }
+  double dot(vec3d *v)            const { return (x*v->x + y*v->y + z*v->z); }
 };
 
 /* 
@@ -72,6 +72,8 @@ inline double degrees_to_radians(double degrees) {
 
 struct cam {
   uint32_t w, h;
+  /* Camera origin */
+  vec3d origin;
   /* Count of random samples for each pixel */
   uint32_t samples_per_pixel = 10;
   /* Maximum number of ray bounces into scene */
@@ -82,22 +84,30 @@ struct cam {
   void init(uint32_t w_, uint32_t h_) {
     w = w_;
     h = h_;
-
-    vec3d center = vec3d(0, 0, 0);
+    origin = vec3d(0, 0, 0);
 
     double focal_l = 1.0;
-    double theta = degrees_to_radians(vfov);
-    double h = tan(theta / 2);
-    double vp_h = 2 * h * focal_l;
+    /* double theta = degrees_to_radians(vfov); */
+    /* double h = tan(theta / 2); */
+    /* double vp_h = 2 * h * focal_l; */
+    double vp_h =  2.0;
     double vp_w = vp_h * (static_cast<double>(w) / h);
 
-    vec3d vu = vec3d(vp_w, 0, 0);
-    vec3d vv = vec3d(0, -vp_h, 0);
+    this->vu = vec3d(vp_w, 0, 0);
+    this->vv = vec3d(0, -vp_h, 0);
 
-    vec3d vp_up_left = center - vec3d(0, 0, focal_l) - vu / 2 - vv / 2;
-    vec3d p0 = vp_up_left + (vu / w + vv / h) * 0.5;
-
+    vec3d vp_up_left = origin - vec3d(0, 0, focal_l) - vu / 2 - vv / 2;
+    this->p0 = vp_up_left + (vu / w + vv / h) * 0.5;
   }
+
+  c_ray get_ray(int x_, int y_) {
+    vec3d r = this->p0 + (this->vu / w * x_) + (this->vv/ h * y_) - this->origin;
+    return c_ray(this->origin, r.norm());
+  }
+
+private:
+  vec3d p0;
+  vec3d vu, vv;
 };
 
 #endif
