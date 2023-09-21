@@ -62,6 +62,8 @@ struct c_plane {
 };
 
 typedef struct c_scene {
+  c_sphere *spheres;
+  uint32_t num_spheres;
 } c_scene_t;
 
 #endif // SCENE_C_

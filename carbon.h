@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include <math.h>
 
+
 #define C_RGBA(r, g, b, a) ((((r)&0xFF)<<(8*0)) |\
                             (((g)&0xFF)<<(8*1)) |\
                             (((b)&0xFF)<<(8*2)) |\
@@ -47,7 +48,7 @@ inline double randd(double min, double max) {
 }
 
 /* Basic data structures */
-struct vec3d {        
+struct vec3d {      
   double x, y, z;                  
   vec3d(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
   /* operators */
@@ -78,10 +79,7 @@ struct c_ray {
   c_ray(vec3d o_, vec3d d_) : o(o_), d(d_) {} 
 };
 
-void c_path_tracer(uint32_t *img, uint32_t w, uint32_t h, int samps);
-
-
-
+/* Camera */
 struct cam {
   uint32_t w, h;
   /* Camera origin */
