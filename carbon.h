@@ -49,22 +49,25 @@ inline double randd(double min, double max) {
 
 /* Basic data structures */
 struct vec3d {      
-  double x, y, z;                  
+  double x, y, z;
   vec3d(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
   /* operators */
-  vec3d operator +  (const vec3d &v)  const { return vec3d(x + v.x, y + v.y, z + v.z); }
-  vec3d operator += (const vec3d &v)  const { return vec3d(x + v.x, y + v.y, z + v.z); }
-  vec3d operator +  (double v)        const { return vec3d(x + v, y + v, z + v); }
-  vec3d operator -  (const vec3d &v)  const { return vec3d(x - v.x, y - v.y, z - v.z); }
-  vec3d operator *  (double v)        const { return vec3d(x * v, y * v, z * v); }
-  vec3d operator /  (double v)        const { return vec3d(x * 1/v, y * 1/v, z * 1/v); }
-  vec3d operator /= (double v)        const { return vec3d(x * 1/v, y * 1/v, z * 1/v); }
+  vec3d operator +  (const vec3d &v) const { return vec3d(x + v.x, y + v.y, z + v.z); }
+  vec3d operator += (const vec3d &v) const { return vec3d(x + v.x, y + v.y, z + v.z); }
+  vec3d operator +  (double v)       const { return vec3d(x + v, y + v, z + v); }
+  vec3d operator -  (const vec3d &v) const { return vec3d(x - v.x, y - v.y, z - v.z); }
+  vec3d operator *  (double v)       const { return vec3d(x * v, y * v, z * v); }
+  vec3d operator /  (double v)       const { return vec3d(x * 1/v, y * 1/v, z * 1/v); }
+  vec3d operator /= (double v)       const { return vec3d(x * 1/v, y * 1/v, z * 1/v); }
   /* normalize vector */
-  vec3d norm()                     const { return *this / sqrt(x*x + y*y + z*z); }
+  vec3d norm()                       const { return *this / sqrt(x*x + y*y + z*z); }
   /* additional functions */
-  vec3d mul(vec3d *v)              const { return vec3d(x*v->x, y*v->y, z*v->z); }
-  vec3d pow()                      const { return vec3d(x*x, y*y, z*z); }
-  double dot(vec3d *v)             const { return (x*v->x + y*v->y + z*v->z); }
+  vec3d mul(vec3d *v)                const { return vec3d(x*v->x, y*v->y, z*v->z); }
+  vec3d pow()                        const { return vec3d(x*x, y*y, z*z); }
+  /* dot product */
+  double dot(vec3d *v)               const { return (x*v->x + y*v->y + z*v->z); }
+  /* cross product */
+  vec3d prod(vec3d *v)               const { return vec3d(y*v->z - z*v->y, z*v->x - x*v->z, x*v->y - y*v->x); }
 };
 
 /* 
@@ -85,7 +88,7 @@ struct cam {
   /* Camera origin */
   vec3d origin;
   /* Count of random samples for each pixel */
-  uint32_t samples_per_pixel = 100;
+  uint32_t samples_per_pixel = 1000;
   /* Maximum number of ray bounces into scene */
   uint32_t maxd              = 10;
   /* Vertical view angle (field of view) */

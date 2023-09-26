@@ -27,9 +27,8 @@
 #include "carbon.h"
 
 typedef enum c_material {
-  GLASS,
-  SOLID,
-  METALIC,
+  DIFF,  
+  REFR,
 } c_material_t;
 
 struct c_sphere {

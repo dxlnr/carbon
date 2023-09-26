@@ -32,6 +32,20 @@
 
 uint32_t IBUF[HEIGHT*WIDTH];
 
+vec3d random_unit_vec_hemisphere(vec3d n)
+{
+  vec3d u = vec3d(1, 0, 0);
+  if (fabs(n.x) > 0.1) {
+    u = vec3d(0, 1, 0);
+  }
+  vec3d v = n.prod(&u);
+  u = v.prod(&n);
+  double r1 = 2 * M_PI * (double) rand() / RAND_MAX;
+  double r2 = (double) rand() / RAND_MAX;
+  double r2s = sqrt(r2);
+  return u * cos(r1) * r2s + v * sin(r1) * r2s + n * sqrt(1 - r2);
+}
+
 int intersect(c_ray ray, c_scene_t *scene, double *t, int *id)
 {
   double dt;
@@ -51,37 +65,39 @@ vec3d radiance(c_ray r, c_scene_t *scene, int depth)
   int id = 0;
   double t;
 
-  if (depth >= 1000) return vec3d(0, 0, 0);
+  if (depth >= 5) return vec3d(0, 0, 0);
   if (!intersect(r, scene, &t, &id)) return vec3d(0, 0, 0);
 
   c_sphere obj = scene->spheres[id];
 
-  printf("t: %f\n", t);
-
-  /* vec3d x = r.o + r.d * t; */
-  /* /1* vec3d em = obj.emission; *1/ */
-
   /* // Pick a random direction from here and keep going. */
   /* Ray newRay; */
   /* newRay.origin = ray.pointWhereObjWasHit; */
+  vec3d nl = (r.o + r.d * t - obj.pos).norm();
+  vec3d nd = random_unit_vec_hemisphere(nl);
+  c_ray nray = c_ray(nl, nd);
 
   /* // This is NOT a cosine-weighted distribution! */
   /* newRay.direction = RandomUnitVectorInHemisphereOf(ray.normalWhereObjWasHit); */
 
-  /* // Probability of the newRay */
-  /* const float p = 1 / (2 * PI); */
+  /* Probability of the newRay */
+  const double p = 1 / (2 * M_PI);
+
+  if (obj.material == DIFF) {
+  }
 
   /* // Compute the BRDF for this ray (assuming Lambertian reflection) */
-  /* float cos_theta = DotProduct(newRay.direction, ray.normalWhereObjWasHit); */
-  /* Color BRDF = material.reflectance / PI; */
+  double theta = nray.d.dot(&nl);
+  vec3d BRDF = obj.emission / M_PI;
 
   /* // Recursively trace reflected light sources. */
+  vec3d incoming = radiance(nray, scene, depth + 1);
   /* Color incoming = TracePath(newRay, depth + 1); */
 
   /* // Apply the Rendering Equation here. */
-  /* return emittance + (BRDF * incoming * cos_theta / p); */
-  vec3d c = vec3d(0, 0, 0);
-  return c;
+  return obj.emission + (BRDF.mul(&incoming) * theta / p);
+  /* vec3d c = vec3d(0, 0, 0); */
+  /* return c; */
 }
 
 void c_path_tracer(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene)
@@ -99,10 +115,10 @@ void c_path_tracer(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene)
       for (int s= 0; s < cam.samples_per_pixel; ++s) {
         c_ray r = cam.get_ray(i, j);
 
-        radiance(r, scene, 0);
-        if (intersect(r, scene, &t, &id)) {
-          c = c + scene->spheres[id].color;
-        }
+        c = c + radiance(r, scene, 0);
+        /* if (intersect(r, scene, &t, &id)) { */
+        /*   c = c + scene->spheres[id].color; */
+        /* } */
       }
       c = c / cam.samples_per_pixel;
       img[j*w + i] = C_RGBA((int) c.x, (int) c.y, (int) c.z, 255);
@@ -115,9 +131,11 @@ void c_path_tracer(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene)
 int main() 
 {
   c_sphere spheres[] = {
-    {.20, vec3d(1, 0, 1), vec3d(5, 45, 240), vec3d(10, 10, 10), SOLID },
-    {.15, vec3d(0.2, 0, 0.75), vec3d(90, 45, 20), vec3d(10, 10, 10), SOLID },
-    {.25, vec3d(0, 0, 1), vec3d(255, 255, 255), vec3d(10, 10, 10), SOLID },
+    {.20, vec3d(1, 0, 1), vec3d(5, 45, 240), vec3d(10, 10, 10), DIFF },
+    {.15, vec3d(0.2, 0, 0.75), vec3d(90, 45, 20), vec3d(10, 10, 10), DIFF },
+    {.25, vec3d(0, 0, 1), vec3d(255, 255, 255), vec3d(10, 10, 10), DIFF },
+    {.25, vec3d(0, 0, 1), vec3d(255, 255, 255), vec3d(10, 10, 10), DIFF },
+    /* {1e5, vec3d(50, 1e5, 81.6), vec3d(10, 10, 10), vec3d(.75,75,.75), DIFF }, */ 
   };
   c_scene_t scene = {
     .spheres = spheres,

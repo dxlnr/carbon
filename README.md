@@ -18,6 +18,17 @@ $L(P \to D_v = L_e (P \to D_v) + \int_\Omega F_s(D_v, D_i) | \cos \theta | L (Y_
 
 The goal is to calculate the radiance (intensity of light) coming from surface point $P$ in direction $D_v$. 
 
+Using **Monte Carlo Sampling**
+
+$L_o = \frac{1}{N} \sum^N_i \frac{L_i \times BRDF \times \cos (\theta_i) }{p(\omega_i)}$
+
+Where:
+- $L_o$ is the outgoing light from the hit point.
+- $N$ is the number of sampled rays.
+- $L_i$ is the incoming light from the $i^{th}$ sampled direction.
+- BRDF is the Bidirectional Reflectance Distribution Function of the surface.
+- $\cos (\theta_i)$ is the cosine of the angle between the $i^{th}$ sampled direction and the normal.
+- $p(\omega_i)$ is the probability density function (pdf) of the $i^{th}$ sampled direction. For cosine-weighted hemisphere sampling, $p(\omega_i) = \cos (\theta_i) / \pi$
 
 ## Path Tracer Overview
 
@@ -65,3 +76,4 @@ end for
 ## Notes
 - [Scratchapixel 3.0](https://www.scratchapixel.com/): Introduces to computer graphics
 - [Ray Tracing in One Weekend: The Book Series](https://raytracing.github.io/)
+- [Ray Tracing](https://en.wikipedia.org/wiki/Ray_tracing_(graphics)): Overview
