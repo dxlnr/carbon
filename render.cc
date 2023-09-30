@@ -32,19 +32,9 @@
 
 uint32_t IBUF[HEIGHT*WIDTH];
 
-vec3d random_unit_vec_hemisphere(vec3d n)
-{
-  vec3d u = vec3d(1, 0, 0);
-  if (fabs(n.x) > 0.1) {
-    u = vec3d(0, 1, 0);
-  }
-  vec3d v = n.prod(&u);
-  u = v.prod(&n);
-  double r1 = 2 * M_PI * (double) rand() / RAND_MAX;
-  double r2 = (double) rand() / RAND_MAX;
-  double r2s = sqrt(r2);
-  return u * cos(r1) * r2s + v * sin(r1) * r2s + n * sqrt(1 - r2);
-}
+inline double clamp(double x){ return x < 0 ? 0 : x > 1 ? 1 : x; } 
+inline int toInt(double x){ return int(pow(clamp(x), 1/2.2) * 255 + .5); } 
+
 
 int intersect(c_ray ray, c_scene_t *scene, double *t, int *id)
 {
@@ -60,49 +50,83 @@ int intersect(c_ray ray, c_scene_t *scene, double *t, int *id)
   return *t < inf;
 }
 
-vec3d radiance(c_ray r, c_scene_t *scene, int depth)
+vec3d radiance(c_ray &r, c_scene_t *scene, int depth)
 {
   int id = 0;
   double t;
 
-  if (depth >= 5) return vec3d(0, 0, 0);
+  unsigned short Xi[3]={0,0, 5*5*5};
+  /* if (depth >= 5) return vec3d(0, 0, 0); */
+  
   if (!intersect(r, scene, &t, &id)) return vec3d(0, 0, 0);
 
   c_sphere obj = scene->spheres[id];
+  vec3d f = obj.color;
+  double p = f.x > f.y && f.x > f.z ? f.x : f.y > f.z ? f.y : f.z;
+
+  if (++depth>5) {
+    if (erand48(Xi) < p) {
+      f = f*(1 / p); 
+    } else { 
+      return obj.emission;
+    }
+  }
+
+  vec3d no = r.o + r.d * t; 
+  vec3d nn = (no - obj.pos).norm(); 
+  vec3d nl = nn.dot(&r.d) < 0 ? nn : nn * -1; 
 
   /* // Pick a random direction from here and keep going. */
   /* Ray newRay; */
   /* newRay.origin = ray.pointWhereObjWasHit; */
-  vec3d nl = (r.o + r.d * t - obj.pos).norm();
-  vec3d nd = random_unit_vec_hemisphere(nl);
+  /* vec3d nl = (r.o + r.d * t - obj.pos).norm(); */
+
+  double r1  = 2 * M_PI * erand48(Xi);
+  double r2  = erand48(Xi);
+  double r2s = sqrt(r2); 
+
+  vec3d w = nl; 
+  vec3d u = ((fabs(w.x) > .1 ? vec3d(0,1) : vec3d(1)).prod(&w)).norm(); 
+  vec3d v = w.prod(&u); 
+
+  vec3d nd = (u * cos(r1) * r2s + v * sin(r1) * r2s + w * sqrt(1-r2)).norm(); 
+
+  /* vec3d nd = random_unit_vec_hemisphere(nl); */
+  /* printf("nd %f %f %f\n", nd.x, nd.y, nd.z); */
   c_ray nray = c_ray(nl, nd);
+
+  vec3d li = radiance(nray, scene, depth + 1);
+  /* printf("li %f %f %f\n", li.x, li.y, li.z); */
+  /* printf("incoming %f %f %f\n", incoming.x, incoming.y, incoming.z); */
+  return obj.emission + obj.color.mul(&li);
 
   /* // This is NOT a cosine-weighted distribution! */
   /* newRay.direction = RandomUnitVectorInHemisphereOf(ray.normalWhereObjWasHit); */
 
-  /* Probability of the newRay */
-  const double p = 1 / (2 * M_PI);
+  /* /1* Probability of the newRay *1/ */
+  /* const double p = 1 / (2 * M_PI); */
 
-  if (obj.material == DIFF) {
-  }
+  /* if (obj.material == DIFF) { */
+  /* } */
 
-  /* // Compute the BRDF for this ray (assuming Lambertian reflection) */
-  double theta = nray.d.dot(&nl);
-  vec3d BRDF = obj.emission / M_PI;
+  /* /1* // Compute the BRDF for this ray (assuming Lambertian reflection) *1/ */
+  /* double theta = nray.d.dot(&nl); */
+  /* vec3d BRDF = obj.color / M_PI; */
 
-  /* // Recursively trace reflected light sources. */
-  vec3d incoming = radiance(nray, scene, depth + 1);
-  /* Color incoming = TracePath(newRay, depth + 1); */
+  /* /1* // Recursively trace reflected light sources. *1/ */
+  /* vec3d incoming = radiance(nray, scene, depth + 1); */
+  /* /1* Color incoming = TracePath(newRay, depth + 1); *1/ */
 
-  /* // Apply the Rendering Equation here. */
-  return obj.emission + (BRDF.mul(&incoming) * theta / p);
-  /* vec3d c = vec3d(0, 0, 0); */
-  /* return c; */
+  /* printf("incoming %f %f %f\n", incoming.x, incoming.y, incoming.z); */
+  /* /1* // Apply the Rendering Equation here. *1/ */
+  /* return obj.emission + (BRDF.mul(&incoming) * theta / p); */
+  /* /1* vec3d c = vec3d(0, 0, 0); *1/ */
+  /* /1* return c; *1/ */
 }
 
 void c_path_tracer(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene)
 {
-  vec3d c = vec3d(0, 0, 0);
+  vec3d c;
   int id = 0;
   double t;
 
@@ -111,7 +135,7 @@ void c_path_tracer(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene)
 
   for (int j = 0; j < h; ++j) {
     fprintf(stderr,"\rRendering (%d spp) %5.2f%%", cam.samples_per_pixel*4, 100.* j / (h-1));
-    for (int i = 0; i < w; ++i) {
+    for (int i = 0; i < w; ++i, c=vec3d(0, 0, 0)) {
       for (int s= 0; s < cam.samples_per_pixel; ++s) {
         c_ray r = cam.get_ray(i, j);
 
@@ -121,9 +145,13 @@ void c_path_tracer(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene)
         /* } */
       }
       c = c / cam.samples_per_pixel;
-      img[j*w + i] = C_RGBA((int) c.x, (int) c.y, (int) c.z, 255);
-
-      c = vec3d(0, 0, 0);
+      /* img[j*w + i] = C_RGBA((int) c.x, (int) c.y, (int) c.z, 255); */
+      /* if (j == 48) { */
+      /*   printf("c %d %d %d\n", toInt(c.x), toInt(c.y), toInt(c.z)); */
+      /*   printf("c %f %f %f\n", c.x, c.y, (c.z)); */
+      /* } */
+      /* c = c - vec3d(0.5, 0.5, 0.5); */
+      img[j*w + i] = C_RGBA(toInt(c.x), toInt(c.y), toInt(c.z), 255);
     }
   }
 }
@@ -131,11 +159,17 @@ void c_path_tracer(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene)
 int main() 
 {
   c_sphere spheres[] = {
-    {.20, vec3d(1, 0, 1), vec3d(5, 45, 240), vec3d(10, 10, 10), DIFF },
-    {.15, vec3d(0.2, 0, 0.75), vec3d(90, 45, 20), vec3d(10, 10, 10), DIFF },
-    {.25, vec3d(0, 0, 1), vec3d(255, 255, 255), vec3d(10, 10, 10), DIFF },
-    {.25, vec3d(0, 0, 1), vec3d(255, 255, 255), vec3d(10, 10, 10), DIFF },
-    /* {1e5, vec3d(50, 1e5, 81.6), vec3d(10, 10, 10), vec3d(.75,75,.75), DIFF }, */ 
+    /* radius, pos, color, emission, material */
+    {.40, vec3d(0, 0, 1),   vec3d(.05, .15, .75), vec3d(0, 0, 0),       DIFF },
+    {1,   vec3d(0, -3, 1),  vec3d(0, 0, 0),       vec3d(10, 10, 10),    DIFF },
+    {1,   vec3d(2, -3, 1),  vec3d(0, 0, 0),       vec3d(10, 10, 10),    DIFF },
+
+    {5,   vec3d(0, -10, 0), vec3d(.1,.1,.6),      vec3d(0, 0, 0),       DIFF }, // top
+    {5,   vec3d(0, 10, 0),  vec3d(.1,.1,.6),      vec3d(0, 0, 0),       DIFF },
+    {5,   vec3d(10, 0, 0),  vec3d(.1,.1,.6),      vec3d(0, 0, 0),       DIFF }, // right
+    {5,   vec3d(-10, 0, 0), vec3d(.1,.1,.6),      vec3d(0, 0, 0),       DIFF }, // left
+    {5,   vec3d(0, 0, -10), vec3d(0, 0, 0),       vec3d(0, 0, 0),       DIFF }, // front
+    /* {5,   vec3d(0, 0, 10),  vec3d(0, 0, 0),       vec3d(0, 0, 0),       DIFF }, // back */
   };
   c_scene_t scene = {
     .spheres = spheres,

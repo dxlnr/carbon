@@ -77,3 +77,4 @@ end for
 - [Scratchapixel 3.0](https://www.scratchapixel.com/): Introduces to computer graphics
 - [Ray Tracing in One Weekend: The Book Series](https://raytracing.github.io/)
 - [Ray Tracing](https://en.wikipedia.org/wiki/Ray_tracing_(graphics)): Overview
+- [smallpt](https://www.kevinbeason.com/smallpt/?source=post_page-----4d9d3ce5fea4--------------------------------): Global Illumination in 99 lines of C++
