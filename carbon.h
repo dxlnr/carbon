@@ -38,14 +38,18 @@
 inline double degr_to_rad(double degrees) {
   return degrees * M_PI / 180.0;
 }
-
 inline double randd() {
-    return rand() / (RAND_MAX + 1.0);
+  return rand() / (RAND_MAX + 1.0);
 }
-
 inline double randd(double min, double max) {
-    return min + (max-min) * (rand() / (RAND_MAX + 1.0));
+  return min + (max-min) * (rand() / (RAND_MAX + 1.0));
 }
+inline double clamp(double x) { 
+  return x < 0 ? 0 : x > 1 ? 1 : x;
+} 
+inline int toInt(double x) { 
+  return int(pow(clamp(x), 1/2.2) * 255 + .5); 
+} 
 
 /* Basic data structures */
 struct vec3d {      
