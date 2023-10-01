@@ -27,11 +27,44 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
-#define WIDTH 128
-#define HEIGHT 96
+#define WIDTH 1280
+#define HEIGHT 960
 
 uint32_t IBUF[HEIGHT*WIDTH];
 
+vec3d random_vec_on_hemisphere(vec3d& n) {
+  vec3d p;
+  while (true) {
+    p = vec3d::rand(-1, 1);
+    if (p.len() < 1)
+      return p;
+  }
+  if (p.dot(&n) > 0.0)
+    return p;
+  else
+    return p * -1;
+}
+
+vec3d ray_color(c_ray r, c_scene_t *s, int depth = 0)
+{
+  double t  = 0;
+  double dt = 1e20;
+
+  if (++depth > 5) return vec3d(0, 0, 0);
+
+  for (int k = 0; k < s->num_spheres; ++k) {
+    if ((t = s->spheres[k].intersect(r)) && t > 0) {
+      if (t < dt) {
+        dt = t;
+        vec3d no = r.o + r.d * t; 
+        vec3d nn = (no - s->spheres[k].pos).norm();
+        vec3d nd = random_vec_on_hemisphere(nn);
+        return ray_color(c_ray(no, nd), s, depth) * 0.05;
+      }
+    }
+  }
+  return vec3d(0.9, 0.9, 0.9);
+}
 
 int intersect(c_ray ray, c_scene_t *scene, double *t, int *id)
 {
@@ -101,7 +134,7 @@ void pt(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene)
   cam.init(w, h);
 
   for (int j = 0; j < h; ++j) {
-    fprintf(stderr,"\rRendering (%d spp) %5.2f%%", cam.samples_per_pixel*4, 100.* j / (h-1));
+    fprintf(stderr,"\r(pt) Rendering (%d spp) %5.2f%%", cam.samples_per_pixel*4, 100.* j / (h-1));
     for (int i = 0; i < w; ++i, c=vec3d(0, 0, 0)) {
       for (int s= 0; s < cam.samples_per_pixel; ++s) {
         unsigned short Xi[3]={0,0, 5*5*5};
@@ -109,9 +142,6 @@ void pt(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene)
         c = c + radiance(r, scene, 0, Xi);
       }
       c = c / cam.samples_per_pixel;
-      if (j == 0 && i == 0) {
-        fprintf(stderr, "c: %f %f %f\n", c.x, c.y, c.z);
-      }
       img[j*w + i] = C_RGBA(toInt(c.x), toInt(c.y), toInt(c.z), 255);
     }
   }
@@ -127,17 +157,13 @@ void rt(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene)
   cam.init(w, h);
 
   for (int j = 0; j < h; ++j) {
-    fprintf(stderr,"\rRendering %5.2f%%", 100.* j / (h-1));
+    fprintf(stderr,"\r(rt) Rendering %5.2f%%", 100.* j / (h-1));
     for (int i = 0; i < w; ++i, c=vec3d(0, 0, 0), t=0, dt=1e20) {
-      c_ray r = cam.get_ray(i, j);
-      for (int k = 0; k < scene->num_spheres; ++k) {
-        if ((t = scene->spheres[k].intersect(r)) && t > 0) {
-          if (t < dt) {
-            dt = t;
-            c = scene->spheres[k].color;
-          }
-        }
+      for (int s = 0; s < cam.samples_per_pixel; ++s) {
+        c_ray r = cam.get_ray(i, j);
+        c = c + ray_color(r, scene);
       }
+      c = c / 50;
       img[j*w + i] = C_RGBA(toInt(c.x), toInt(c.y), toInt(c.z), 255);
     }
   }
@@ -145,20 +171,10 @@ void rt(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene)
 
 int main() 
 {
-  /* c_sphere spheres[] = {//Scene: radius, position, emission, color, material */ 
-  /*   {1e5, vec3d( 1e5+1,40.8,81.6), vec3d(),vec3d(.75,.25,.25),DIFF},//Left */ 
-  /*   {1e5, vec3d(-1e5+99,40.8,81.6),vec3d(),vec3d(.25,.25,.75),DIFF},//Rght */ 
-  /*   {1e5, vec3d(50,40.8, 1e5),     vec3d(),vec3d(.75,.75,.75),DIFF},//Back */ 
-  /*   {1e5, vec3d(50,40.8,-1e5+170), vec3d(),vec3d(),           DIFF},//Frnt */ 
-  /*   {1e5, vec3d(50, 1e5, 81.6),    vec3d(),vec3d(.75,.75,.75),DIFF},//Botm */ 
-  /*   {1e5, vec3d(50,-1e5+81.6,81.6),vec3d(),vec3d(.75,.75,.75),DIFF},//Top */ 
-  /*   /1* {16.5,vec3d(27,16.5,47),       vec3d(),vec3d(1,1,1)*.999, SPEC},//Mirr *1/ */ 
-  /*   /1* {16.5,vec3d(73,16.5,78),       vec3d(),vec3d(1,1,1)*.999, REFR},//Glas *1/ */ 
-  /*   {600, vec3d(50,681.6-.27,81.6),vec3d(12,12,12),  vec3d(), DIFF}//Lite */ 
- /* }; */
   c_sphere spheres[] = {
     { .5, vec3d(0,0,-1),     vec3d(.05,.15,.75),vec3d(0, 0, 0),DIFF },
-    { 100,vec3d(0,-100.5,-1),vec3d(.85,.15,.75),vec3d(0, 0, 0),DIFF },
+    /* { 1000,vec3d(0,-1000.5,-1),vec3d(.85,.15,.75),vec3d(0, 0, 0),DIFF }, */
+    { 1000,vec3d(0,-1000.5,-1),vec3d(.85,.15,.75),vec3d(0, 0, 0),DIFF },
   };
   /* c_sphere spheres[] = { */
   /*   /1* radius, pos, color, emission, material *1/ */

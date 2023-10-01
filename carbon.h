@@ -28,6 +28,9 @@
 #include <stdint.h>
 #include <math.h>
 
+#define C_RGB(r, g, b)     ((((r)&0xFF)<<(8*0)) |\
+                            (((g)&0xFF)<<(8*1)) |\
+                            (((b)&0xFF)<<(8*2)))
 
 #define C_RGBA(r, g, b, a) ((((r)&0xFF)<<(8*0)) |\
                             (((g)&0xFF)<<(8*1)) |\
@@ -35,21 +38,11 @@
                             (((a)&0xFF)<<(8*3)))
 
 /* Helper functions */
-inline double degr_to_rad(double degrees) {
-  return degrees * M_PI / 180.0;
-}
-inline double randd() {
-  return rand() / (RAND_MAX + 1.0);
-}
-inline double randd(double min, double max) {
-  return min + (max-min) * (rand() / (RAND_MAX + 1.0));
-}
-inline double clamp(double x) { 
-  return x < 0 ? 0 : x > 1 ? 1 : x;
-} 
-inline int toInt(double x) { 
-  return int(pow(clamp(x), 1/2.2) * 255 + .5); 
-} 
+inline double degr_to_rad(double degrees)   { return degrees * M_PI / 180.0; }
+inline double randd()                       { return rand() / (RAND_MAX + 1.0); }
+inline double randd(double min, double max) { return min + (max-min) * (rand() / (RAND_MAX + 1.0)); }
+inline double clamp(double x)               { return x < 0 ? 0 : x > 1 ? 1 : x; } 
+inline int toInt(double x)                  { return int(pow(clamp(x), 1/2.2) * 255 + .5); } 
 
 /* Basic data structures */
 struct vec3d {      
@@ -64,14 +57,20 @@ struct vec3d {
   vec3d operator /  (double v)       const { return vec3d(x * 1/v, y * 1/v, z * 1/v); }
   vec3d operator /= (double v)       const { return vec3d(x * 1/v, y * 1/v, z * 1/v); }
   /* normalize vector */
-  vec3d norm()                       const { return *this / sqrt(x*x + y*y + z*z); }
+  vec3d norm()                       const { return *this / sqrt(x * x + y * y + z * z); }
   /* additional functions */
-  vec3d mul(vec3d *v)                const { return vec3d(x*v->x, y*v->y, z*v->z); }
-  vec3d pow()                        const { return vec3d(x*x, y*y, z*z); }
+  vec3d mul(vec3d *v)                const { return vec3d(x * v->x, y * v->y, z * v->z); }
+  vec3d pow()                        const { return vec3d(x * x, y * y, z * z); }
   /* dot product */
-  double dot(vec3d *v)               const { return (x*v->x + y*v->y + z*v->z); }
+  double dot(vec3d *v)               const { return (x * v->x + y * v->y + z * v->z); }
   /* cross product */
-  vec3d prod(vec3d *v)               const { return vec3d(y*v->z - z*v->y, z*v->x - x*v->z, x*v->y - y*v->x); }
+  vec3d prod(vec3d *v)               const { return vec3d(y * v->z - z * v->y, 
+                                                          z * v->x - x * v->z, x * v->y - y * v->x); }
+  /* length of vector */
+  double len()                       const { return x * x + y * y + z * z; }
+  /* random vector */
+  static vec3d rand()                      { return vec3d(randd(), randd(), randd()); }
+  static vec3d rand(double l, double h)    { return vec3d(randd(l,h), randd(l,h), randd(l,h)); }
 };
 
 /* 
@@ -92,7 +91,7 @@ struct cam {
   /* Camera origin */
   vec3d origin;
   /* Count of random samples for each pixel */
-  uint32_t samples_per_pixel = 1000;
+  uint32_t samples_per_pixel = 10;
   /* Maximum number of ray bounces into scene */
   uint32_t maxd              = 10;
   /* Vertical view angle (field of view) */
