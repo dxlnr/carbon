@@ -71,6 +71,8 @@ struct vec3d {
   /* random vector */
   static vec3d rand()                      { return vec3d(randd(), randd(), randd()); }
   static vec3d rand(double l, double h)    { return vec3d(randd(l,h), randd(l,h), randd(l,h)); }
+  /* unit vector */
+  static vec3d unit(vec3d v)               { return v / v.len(); }
 };
 
 /* 
