@@ -121,27 +121,23 @@ void rt(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene)
 {
   int id = 0;
   vec3d c;
-  double t;
+  double t, dt;
 
   cam cam;
   cam.init(w, h);
 
   for (int j = 0; j < h; ++j) {
-    fprintf(stderr,"\rRendering (%d spp) %5.2f%%", cam.samples_per_pixel*4, 100.* j / (h-1));
-    for (int i = 0; i < w; ++i, c=vec3d(0, 0, 0), t=0) {
+    fprintf(stderr,"\rRendering %5.2f%%", 100.* j / (h-1));
+    for (int i = 0; i < w; ++i, c=vec3d(0, 0, 0), t=0, dt=1e20) {
       c_ray r = cam.get_ray(i, j);
-      if (intersect(r, scene, &t, &id)) {
-        c = scene->spheres[id].color;
+      for (int k = 0; k < scene->num_spheres; ++k) {
+        if ((t = scene->spheres[k].intersect(r)) && t > 0) {
+          if (t < dt) {
+            dt = t;
+            c = scene->spheres[k].color;
+          }
+        }
       }
-      /* for (int k = 0; k < scene->num_spheres; ++k) { */
-      /*   double tmp = scene->spheres[k].intersect(r); */
-      /*   if (tmp > t) { */
-      /*     t = tmp; */
-      /*   } */
-      /*   if (t > 0) { */
-      /*     c = scene->spheres[k].color; */
-      /*   } */
-      /* } */
       img[j*w + i] = C_RGBA(toInt(c.x), toInt(c.y), toInt(c.z), 255);
     }
   }
