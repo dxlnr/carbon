@@ -37,7 +37,7 @@ vec3d random_vec_on_hemisphere(vec3d& n) {
   while (true) {
     p = vec3d::rand(-1, 1);
     if (p.len() < 1)
-      return p;
+      return vec3d::unit(p);
   }
   if (p.dot(&n) > 0.0)
     return p;
@@ -47,8 +47,10 @@ vec3d random_vec_on_hemisphere(vec3d& n) {
 
 vec3d ray_color(c_ray r, c_scene_t *s, int depth = 0)
 {
+  int id = -1;
   double t  = 0;
   double dt = 1e20;
+  vec3d c;
 
   if (++depth > 5) return vec3d(0, 0, 0);
 
@@ -56,14 +58,16 @@ vec3d ray_color(c_ray r, c_scene_t *s, int depth = 0)
     if ((t = s->spheres[k].intersect(r)) && t > 0) {
       if (t < dt) {
         dt = t;
+        id = k;
         vec3d no = r.o + r.d * t; 
-        vec3d nn = (no - s->spheres[k].pos).norm();
+        vec3d nn = (no - s->spheres[id].pos).norm();
         vec3d nd = random_vec_on_hemisphere(nn);
-        return ray_color(c_ray(no, nd), s, depth) * 0.05;
+        return ray_color(c_ray(no, nd), s, depth) * 0.5;
       }
     }
   }
-  return vec3d(0.9, 0.9, 0.9);
+  vec3d nn = vec3d::unit(r.o + r.d * t - vec3d(0, 0, -1));
+  return vec3d(nn.x + 1, nn.y + 1, nn.z + 1);
 }
 
 int intersect(c_ray ray, c_scene_t *scene, double *t, int *id)
@@ -161,19 +165,20 @@ void rt(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene)
     for (int i = 0; i < w; ++i, c=vec3d(0, 0, 0)) {
       for (int s = 0; s < cam.samples_per_pixel; ++s, t=0, dt=1e20, id=-1) {
         c_ray r = cam.get_ray(i, j);
-        for (int k = 0; k < scene->num_spheres; ++k) {
-          if ((t = scene->spheres[k].intersect(r)) && t > 0) {
-            if (t < dt) {
-              dt = t;
-              id = k;
-            }
-          }
-        }
-        if (id >= 0) {
-          /* vec3d nn = vec3d::unit(r.o + r.d * t - vec3d(0, 0, -1)); */
-          /* c = c + vec3d(nn.x + 1, nn.y + 1, nn.z + 1); */
-          c = c + scene->spheres[id].color;
-        }
+        c = c + ray_color(r, scene);
+        /* for (int k = 0; k < scene->num_spheres; ++k) { */
+        /*   if ((t = scene->spheres[k].intersect(r)) && t > 0) { */
+        /*     if (t < dt) { */
+        /*       dt = t; */
+        /*       id = k; */
+        /*     } */
+        /*   } */
+        /* } */
+        /* if (id >= 0) { */
+        /*   /1* vec3d nn = vec3d::unit(r.o + r.d * t - vec3d(0, 0, -1)); *1/ */
+        /*   /1* c = c + vec3d(nn.x + 1, nn.y + 1, nn.z + 1); *1/ */
+        /*   c = c + scene->spheres[id].color; */
+        /* } */
       }
       c = c / cam.samples_per_pixel;
       img[j*w + i] = C_RGBA(toInt(c.x), toInt(c.y), toInt(c.z), 255);
