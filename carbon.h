@@ -134,4 +134,20 @@ private:
   vec3d vu, vv;
 };
 
+typedef struct state {
+  /* image width and height */
+  uint32_t w;
+  uint32_t h;
+  uint32_t samples_per_pixel;
+  /* use cuda */
+  unsigned char cuda;
+  /* output filename */
+  char *outfile; 
+  /* image buffer */
+  uint32_t *im_buffer;
+
+  state(){ w = 1280, h = 960, samples_per_pixel = 10, cuda = 0, outfile = (char *) "out";}
+} state_t;
+
+
 #endif

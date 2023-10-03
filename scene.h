@@ -64,6 +64,4 @@ typedef struct c_scene {
   uint32_t num_spheres;
 } c_scene_t;
 
-int intersect(c_ray ray, c_scene_t *scene, double *t, int *id);
-
 #endif // SCENE_C_

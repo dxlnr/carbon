@@ -27,30 +27,92 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
-#define WIDTH 1280
-#define HEIGHT 960
+/* parse_args return codes: */
+#define ARG_HELP          1
 
-uint32_t IBUF[HEIGHT*WIDTH];
+static const char show_help[] =
+  "Carbon Rendering Engine "" \n"
+  "\n"
+  "Usage: carbon [options...] [-o outfile] ...\n"
+  "General options:\n"
+  "  -o <file>           Place the output into <file>.\n"
+  "  -help               Display available options (-help-hidden for more).\n"
+  "  -w                  Width of the output image.\n"
+  "  -h                  Height of the output image.\n"
+  "  -s                  Number of samples per pixel used in rendering algorithm.\n"
+  "  -cuda               Use CUDA for rendering.\n"
+  "  -t                  Number of threads used in rendering algorithm.\n"
+  "  -v                  Verbose mode.\n"
+;
 
-vec3d random_vec_on_hemisphere(vec3d& n) {
+char *concat_strs(char *s1, char *s2)
+{
+  char *con = (char *) malloc(strlen(s1) + strlen(s2) + 1);  
+  if (!con) {
+    perror("Unable to allocate memory");
+    return NULL;
+  }
+  strcpy(con, s1);
+  strcat(con, s2);
+  return con;
+}
+
+int parse_args(state_t *s, int *argc, char ***argv) 
+{
+  for (int i = 1; i < *argc; ++i) {
+    if (!strcmp((*argv)[i], "-help")) {
+      return ARG_HELP;
+    } else if (!strcmp((*argv)[i], "-s")) 
+    {
+      if (++i >= *argc) {
+        fprintf(stderr, "ERROR: -s requires a number\n");
+        return -1;
+      }
+      s->samples_per_pixel = atoi((*argv)[i]);
+    } else if (!strcmp((*argv)[i], "-w")) 
+    {
+      
+      if (++i >= *argc) {
+        fprintf(stderr, "ERROR: -w requires a number. Please specify the width.\n");
+        return -1;
+      }
+      s->w = atoi((*argv)[i]);
+    } else if (!strcmp((*argv)[i], "-h")) 
+    {
+      if (++i >= *argc) {
+        fprintf(stderr, "ERROR: -h requires a number. Please specify the height.\n");
+        return -1;
+      }
+      s->h = atoi((*argv)[i]);
+    }
+  }
+  return 0;
+}
+
+
+vec3d random_unit_vec() 
+{
   vec3d p;
   while (true) {
     p = vec3d::rand(-1, 1);
     if (p.len() < 1)
       return vec3d::unit(p);
   }
+}
+
+vec3d random_vec_on_hemisphere(vec3d& n) {
+  vec3d p = random_unit_vec();
   if (p.dot(&n) > 0.0)
     return p;
   else
     return p * -1;
 }
 
-vec3d ray_color(c_ray r, c_scene_t *s, int depth = 0)
+vec3d ray_color(c_ray r, c_scene_t *s, int depth = 0, int max_depth = 5)
 {
   int id = -1;
   double t  = 0;
   double dt = 1e20;
-  vec3d c;
 
   if (++depth > 5) return vec3d(0, 0, 0);
 
@@ -61,7 +123,8 @@ vec3d ray_color(c_ray r, c_scene_t *s, int depth = 0)
         id = k;
         vec3d no = r.o + r.d * t; 
         vec3d nn = (no - s->spheres[id].pos).norm();
-        vec3d nd = random_vec_on_hemisphere(nn);
+        /* vec3d nd = random_vec_on_hemisphere(nn); */
+        vec3d nd = nn + random_unit_vec();
         return ray_color(c_ray(no, nd), s, depth) * 0.5;
       }
     }
@@ -186,11 +249,23 @@ void rt(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene)
   }
 }
 
-int main() 
+int main(int argc, char **argv) 
 {
+  state_t s = state();
+
+  int args = parse_args(&s, &argc, &argv);
+  if (args < 0) return 1;
+
+  if (args == ARG_HELP){
+    fputs(show_help, stdout);
+    return 0;
+  }
+  uint32_t im_buf[s.h*s.w];
+
   c_sphere spheres[] = {
     /* radius, pos, color, emission, material */
-    { .5, vec3d(0,0,-1),     vec3d(.05,.15,.75),vec3d(0, 0, 0),DIFF },
+    { .5,  vec3d(0,0,-1),      vec3d(.05,.15,.75),vec3d(0, 0, 0),DIFF },
+    { .5,  vec3d(1,0,-1),      vec3d(0, 0, 0),    vec3d(0, 0, 0),DIFF },
     { 1000,vec3d(0,-1000.5,-1),vec3d(.85,.15,.75),vec3d(0, 0, 0),DIFF },
   };
   c_scene_t scene = {
@@ -199,12 +274,16 @@ int main()
   };
 
   /* pt(IBUF, WIDTH, HEIGHT, &scene); */
-  rt(IBUF, WIDTH, HEIGHT, &scene);
+  rt(im_buf, s.w, s.h, &scene);
 
-  const char *file_path = "out.png";
-  if (!stbi_write_png(file_path, WIDTH, HEIGHT, 4, IBUF, sizeof(uint32_t)*WIDTH)) {
-        fprintf(stderr, "ERROR: could not write %s\n", file_path);
-        return 1;
+  char *out_file = concat_strs(s.outfile, (char *) ".png");
+  if (out_file == NULL) {
+    return 0;
+  }
+
+  if (!stbi_write_png(out_file, s.w, s.h, 4, im_buf, sizeof(uint32_t)*s.w)) {
+    fprintf(stderr, "ERROR: could not write %s\n", out_file);
+    return 1;
   }
   return 0;
 }

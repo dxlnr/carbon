@@ -5,6 +5,8 @@
 scons
 # Run
 ./render
+# Display help
+bash run.sh -h
 ```
 
 ## Concepts
