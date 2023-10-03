@@ -28,6 +28,7 @@
 
 typedef enum c_material {
   DIFF,  
+  REFL,
   SPEC,
   REFR,
 } c_material_t;

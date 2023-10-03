@@ -28,10 +28,6 @@
 #include <stdint.h>
 #include <math.h>
 
-#define C_RGB(r, g, b)     ((((r)&0xFF)<<(8*0)) |\
-                            (((g)&0xFF)<<(8*1)) |\
-                            (((b)&0xFF)<<(8*2)))
-
 #define C_RGBA(r, g, b, a) ((((r)&0xFF)<<(8*0)) |\
                             (((g)&0xFF)<<(8*1)) |\
                             (((b)&0xFF)<<(8*2)) |\
@@ -73,6 +69,8 @@ struct vec3d {
   static vec3d rand(double l, double h)    { return vec3d(randd(l,h), randd(l,h), randd(l,h)); }
   /* unit vector */
   static vec3d unit(vec3d v)               { return v / v.len(); }
+  /* Return true if the vector is close to zero in all dimensions. */
+  bool zero(double s = 1e-8) { return (fabs(x) < s) && (fabs(y) < s) && (fabs(z) < s); }
 };
 
 /* 
@@ -93,15 +91,16 @@ struct cam {
   /* Camera origin */
   vec3d origin;
   /* Count of random samples for each pixel */
-  uint32_t samples_per_pixel = 10;
+  uint32_t spp = 10;
   /* Maximum number of ray bounces into scene */
   uint32_t maxd              = 10;
   /* Vertical view angle (field of view) */
   double vfov                = 90;
 
-  void init(uint32_t w_, uint32_t h_) {
+  void init(uint32_t w_, uint32_t h_, uint32_t spp_) {
     w = w_;
     h = h_;
+    spp = spp_;
     origin = vec3d(0, 0, 0);
 
     double focal_l = 1.0;
@@ -148,6 +147,5 @@ typedef struct state {
 
   state(){ w = 1280, h = 960, samples_per_pixel = 10, cuda = 0, outfile = (char *) "out";}
 } state_t;
-
 
 #endif

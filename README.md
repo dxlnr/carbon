@@ -7,6 +7,8 @@ scons
 ./render
 # Display help
 bash run.sh -h
+# Run with args
+bash run.sh -w 960 -h 720 -s 1000
 ```
 
 ## Concepts

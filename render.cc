@@ -62,33 +62,39 @@ int parse_args(state_t *s, int *argc, char ***argv)
   for (int i = 1; i < *argc; ++i) {
     if (!strcmp((*argv)[i], "-help")) {
       return ARG_HELP;
-    } else if (!strcmp((*argv)[i], "-s")) 
-    {
+    } else if (!strcmp((*argv)[i], "-s")) {
       if (++i >= *argc) {
-        fprintf(stderr, "ERROR: -s requires a number\n");
+        fprintf(stderr, "ERROR: -s requires a number. Please specify the samples per pixels.\n");
         return -1;
       }
       s->samples_per_pixel = atoi((*argv)[i]);
-    } else if (!strcmp((*argv)[i], "-w")) 
-    {
-      
+    } else if (!strcmp((*argv)[i], "-w")) {
       if (++i >= *argc) {
         fprintf(stderr, "ERROR: -w requires a number. Please specify the width.\n");
         return -1;
       }
       s->w = atoi((*argv)[i]);
-    } else if (!strcmp((*argv)[i], "-h")) 
-    {
+    } else if (!strcmp((*argv)[i], "-h")) {
       if (++i >= *argc) {
         fprintf(stderr, "ERROR: -h requires a number. Please specify the height.\n");
         return -1;
       }
       s->h = atoi((*argv)[i]);
+    } else if (!strcmp((*argv)[i], "-o")) {
+      if (++i >= *argc) {
+        fprintf(stderr, "ERROR: -o requires a filename. Please specify the output filename.\n");
+        return -1;
+      }
+      s->outfile = (*argv)[i];
+    } else if (!strcmp((*argv)[i], "-cuda")) {
+      s->cuda = 1;
+    } else {
+      fprintf(stderr, "ERROR: unknown option %s\n", (*argv)[i]);
+      return -1;
     }
   }
   return 0;
 }
-
 
 vec3d random_unit_vec() 
 {
@@ -108,29 +114,45 @@ vec3d random_vec_on_hemisphere(vec3d& n) {
     return p * -1;
 }
 
-vec3d ray_color(c_ray r, c_scene_t *s, int depth = 0, int max_depth = 5)
+vec3d reflect(vec3d &v, vec3d &n) {
+  return (v - 2 * v.dot(&n)).mul(&n);
+}
+
+vec3d ray_color(c_ray r, c_scene_t *s, int depth = 0, int max_depth = 50)
 {
   int id = -1;
   double t  = 0;
   double dt = 1e20;
+  vec3d no, nn, nd;
 
-  if (++depth > 5) return vec3d(0, 0, 0);
+  if (++depth > max_depth) return vec3d(0, 0, 0);
 
+  // TODO: rewrite as this always detects the first sphere (not the closest)
   for (int k = 0; k < s->num_spheres; ++k) {
     if ((t = s->spheres[k].intersect(r)) && t > 0) {
       if (t < dt) {
         dt = t;
         id = k;
-        vec3d no = r.o + r.d * t; 
-        vec3d nn = (no - s->spheres[id].pos).norm();
-        /* vec3d nd = random_vec_on_hemisphere(nn); */
-        vec3d nd = nn + random_unit_vec();
-        return ray_color(c_ray(no, nd), s, depth) * 0.5;
+        no = r.o + r.d * t; 
+        nn = (no - s->spheres[id].pos).norm();
+        if (s->spheres[id].material == DIFF) 
+        {
+          nd = nn + random_unit_vec();
+          if (nd.zero())
+            nd = nn;
+        } else if (s->spheres[id].material == REFL)
+        {
+          vec3d urd = vec3d::unit(r.d);
+          nd = reflect(urd, nn);
+        } else {
+          printf("ERROR: unknown material\n");
+        }
+        return ray_color(c_ray(no, nd), s, depth).mul(&s->spheres[id].color);
       }
     }
   }
-  vec3d nn = vec3d::unit(r.o + r.d * t - vec3d(0, 0, -1));
-  return vec3d(nn.x + 1, nn.y + 1, nn.z + 1);
+  vec3d n = vec3d::unit(r.o + r.d * t - vec3d(0, 0, -1));
+  return vec3d(n.x + 1, n.y + 1, n.z + 1);
 }
 
 int intersect(c_ray ray, c_scene_t *scene, double *t, int *id)
@@ -191,43 +213,37 @@ vec3d radiance(c_ray &r, c_scene_t *scene, int depth, unsigned short *Xi)
   return obj.emission;
 }
 
-void pt(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene)
+void pt(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene, cam *cam)
 {
-  vec3d c;
   int id = 0;
+  vec3d c;
   double t;
 
-  cam cam;
-  cam.init(w, h);
-
   for (int j = 0; j < h; ++j) {
-    fprintf(stderr,"\r(pt) Rendering (%d spp) %5.2f%%", cam.samples_per_pixel*4, 100.* j / (h-1));
+    fprintf(stderr,"\r(pt) Rendering (%d spp) %5.2f%%", cam->spp*4, 100.* j / (h-1));
     for (int i = 0; i < w; ++i, c=vec3d(0, 0, 0)) {
-      for (int s= 0; s < cam.samples_per_pixel; ++s) {
+      for (int s= 0; s < cam->spp; ++s) {
         unsigned short Xi[3]={0,0, 5*5*5};
-        c_ray r = cam.get_ray(i, j);
+        c_ray r = cam->get_ray(i, j);
         c = c + radiance(r, scene, 0, Xi);
       }
-      c = c / cam.samples_per_pixel;
+      c = c / cam->spp;
       img[j*w + i] = C_RGBA(toInt(c.x), toInt(c.y), toInt(c.z), 255);
     }
   }
 }
 
-void rt(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene)
+void rt(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene, cam *cam)
 {
   int id = 0;
   vec3d c;
   double t, dt;
 
-  cam cam;
-  cam.init(w, h);
-
   for (int j = 0; j < h; ++j) {
     fprintf(stderr,"\r(rt) Rendering %5.2f%%", 100.* j / (h-1));
     for (int i = 0; i < w; ++i, c=vec3d(0, 0, 0)) {
-      for (int s = 0; s < cam.samples_per_pixel; ++s, t=0, dt=1e20, id=-1) {
-        c_ray r = cam.get_ray(i, j);
+      for (int s = 0; s < cam->spp; ++s, t=0, dt=1e20, id=-1) {
+        c_ray r = cam->get_ray(i, j);
         c = c + ray_color(r, scene);
         /* for (int k = 0; k < scene->num_spheres; ++k) { */
         /*   if ((t = scene->spheres[k].intersect(r)) && t > 0) { */
@@ -243,7 +259,7 @@ void rt(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene)
         /*   c = c + scene->spheres[id].color; */
         /* } */
       }
-      c = c / cam.samples_per_pixel;
+      c = c / cam->spp;
       img[j*w + i] = C_RGBA(toInt(c.x), toInt(c.y), toInt(c.z), 255);
     }
   }
@@ -264,17 +280,19 @@ int main(int argc, char **argv)
 
   c_sphere spheres[] = {
     /* radius, pos, color, emission, material */
-    { .5,  vec3d(0,0,-1),      vec3d(.05,.15,.75),vec3d(0, 0, 0),DIFF },
-    { .5,  vec3d(1,0,-1),      vec3d(0, 0, 0),    vec3d(0, 0, 0),DIFF },
-    { 1000,vec3d(0,-1000.5,-1),vec3d(.85,.15,.75),vec3d(0, 0, 0),DIFF },
+    { .5, vec3d(0,0,-1),     vec3d(.7,.3,.3),vec3d(.8,.8,.3),DIFF },
+    { .5, vec3d(1,0,-1),     vec3d(.8,.6,.2),vec3d(.8,.8,.8),REFL },
+    { 100,vec3d(0,-100.5,-1),vec3d(.8,.8,.0),vec3d(.8,.3, 0),DIFF },
   };
   c_scene_t scene = {
     .spheres = spheres,
     .num_spheres = sizeof(spheres) / sizeof(spheres[0]),
   };
 
+  cam cam; cam.init(s.w, s.h, s.samples_per_pixel);
+
   /* pt(IBUF, WIDTH, HEIGHT, &scene); */
-  rt(im_buf, s.w, s.h, &scene);
+  rt(im_buf, s.w, s.h, &scene, &cam);
 
   char *out_file = concat_strs(s.outfile, (char *) ".png");
   if (out_file == NULL) {
