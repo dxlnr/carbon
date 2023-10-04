@@ -40,6 +40,31 @@ struct c_sphere {
   vec3d emission;
   c_material_t material;
 
+  int hit(c_ray r, c_hit_t *ch, double tmin = 0, double tmax = 1e20) {
+    vec3d oc = r.o - this->pos;
+    double a = r.d.dot(&r.d); 
+    double b = (r.d).dot(&oc);
+    double c = oc.dot(&oc) - (this->radius * this->radius);
+
+    double sd = b * b - (a * c);
+    if (sd < 0) return 0;
+
+    double sqrtd = sqrt(sd);
+    double root = (-b - sqrtd) / a;
+    if (root <= tmin || tmax <= root) {
+      root = (-b + sqrtd) / a;
+      if (root <= tmin || tmax <= root)
+        return 0;
+    }
+
+    ch->t = root;
+    ch->o = r.o + r.d * root;
+    vec3d on = (ch->o - pos) / radius;
+    ch->set_ff_n(r, on);
+
+    return 1;
+  }
+
   double intersect(c_ray r) {
     vec3d oc = r.o - this->pos;
     double a = r.d.dot(&r.d); 

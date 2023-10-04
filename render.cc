@@ -28,7 +28,7 @@
 #include "stb_image_write.h"
 
 /* parse_args return codes: */
-#define ARG_HELP          1
+#define ARG_HELP_R          1
 
 static const char show_help[] =
   "Carbon Rendering Engine "" \n"
@@ -57,40 +57,49 @@ char *concat_strs(char *s1, char *s2)
   return con;
 }
 
+int get_arg_type(const char* arg) 
+{
+  if (!strcmp(arg, "-help")) return ARG_HELP;
+  if (!strcmp(arg, "-s"))    return ARG_S;
+  if (!strcmp(arg, "-w"))    return ARG_W;
+  if (!strcmp(arg, "-h"))    return ARG_H;
+  if (!strcmp(arg, "-o"))    return ARG_O;
+  if (!strcmp(arg, "-cuda")) return ARG_CUDA;
+  return ARG_UNKNOWN;
+}
+
 int parse_args(state_t *s, int *argc, char ***argv) 
 {
   for (int i = 1; i < *argc; ++i) {
-    if (!strcmp((*argv)[i], "-help")) {
-      return ARG_HELP;
-    } else if (!strcmp((*argv)[i], "-s")) {
-      if (++i >= *argc) {
-        fprintf(stderr, "ERROR: -s requires a number. Please specify the samples per pixels.\n");
+    switch (get_arg_type((*argv)[i])) {
+      case ARG_HELP:
+        return ARG_HELP_R;
+      case ARG_S:
+        if (++i >= *argc) goto check_num_err;
+        s->samples_per_pixel = atoi((*argv)[i]);
+        break;
+      case ARG_O:
+        if (++i >= *argc) goto check_num_err;
+        s->outfile = (*argv)[i];
+        break;
+      case ARG_W:
+        if (++i >= *argc) goto check_num_err;
+        s->w = atoi((*argv)[i]);
+        break;
+      case ARG_H:
+        if (++i >= *argc) goto check_num_err;
+        s->h = atoi((*argv)[i]);
+        break;
+      case ARG_CUDA:
+        s->cuda = 1;
+        break;
+      default:
+        fprintf(stderr, "ERROR: unknown option %s\n", (*argv)[i-1]);
         return -1;
-      }
-      s->samples_per_pixel = atoi((*argv)[i]);
-    } else if (!strcmp((*argv)[i], "-w")) {
-      if (++i >= *argc) {
-        fprintf(stderr, "ERROR: -w requires a number. Please specify the width.\n");
+
+    check_num_err:
+        fprintf(stderr, "ERROR: %s requires an argument.\n", (*argv)[i-1]);
         return -1;
-      }
-      s->w = atoi((*argv)[i]);
-    } else if (!strcmp((*argv)[i], "-h")) {
-      if (++i >= *argc) {
-        fprintf(stderr, "ERROR: -h requires a number. Please specify the height.\n");
-        return -1;
-      }
-      s->h = atoi((*argv)[i]);
-    } else if (!strcmp((*argv)[i], "-o")) {
-      if (++i >= *argc) {
-        fprintf(stderr, "ERROR: -o requires a filename. Please specify the output filename.\n");
-        return -1;
-      }
-      s->outfile = (*argv)[i];
-    } else if (!strcmp((*argv)[i], "-cuda")) {
-      s->cuda = 1;
-    } else {
-      fprintf(stderr, "ERROR: unknown option %s\n", (*argv)[i]);
-      return -1;
     }
   }
   return 0;
@@ -118,42 +127,42 @@ vec3d reflect(vec3d &v, vec3d &n) {
   return (v - 2 * v.dot(&n)).mul(&n);
 }
 
-vec3d ray_color(c_ray r, c_scene_t *s, int depth = 0, int max_depth = 50)
-{
-  int id = -1;
-  double t  = 0;
-  double dt = 1e20;
-  vec3d no, nn, nd;
+/* vec3d ray_color(c_ray r, c_scene_t *s, int depth = 0, int max_depth = 50) */
+/* { */
+/*   int id = -1; */
+/*   double t  = 0; */
+/*   double dt = 1e20; */
+/*   vec3d no, nn, nd; */
 
-  if (++depth > max_depth) return vec3d(0, 0, 0);
+/*   if (++depth > max_depth) return vec3d(0, 0, 0); */
 
-  // TODO: rewrite as this always detects the first sphere (not the closest)
-  for (int k = 0; k < s->num_spheres; ++k) {
-    if ((t = s->spheres[k].intersect(r)) && t > 0) {
-      if (t < dt) {
-        dt = t;
-        id = k;
-        no = r.o + r.d * t; 
-        nn = (no - s->spheres[id].pos).norm();
-        if (s->spheres[id].material == DIFF) 
-        {
-          nd = nn + random_unit_vec();
-          if (nd.zero())
-            nd = nn;
-        } else if (s->spheres[id].material == REFL)
-        {
-          vec3d urd = vec3d::unit(r.d);
-          nd = reflect(urd, nn);
-        } else {
-          printf("ERROR: unknown material\n");
-        }
-        return ray_color(c_ray(no, nd), s, depth).mul(&s->spheres[id].color);
-      }
-    }
-  }
-  vec3d n = vec3d::unit(r.o + r.d * t - vec3d(0, 0, -1));
-  return vec3d(n.x + 1, n.y + 1, n.z + 1);
-}
+/*   // TODO: rewrite as this always detects the first sphere (not the closest) */
+/*   for (int k = 0; k < s->num_spheres; ++k) { */
+/*     if ((t = s->spheres[k].intersect(r)) && t > 0) { */
+/*       if (t < dt) { */
+/*         dt = t; */
+/*         id = k; */
+/*         no = r.o + r.d * t; */ 
+/*         nn = (no - s->spheres[id].pos).norm(); */
+/*         if (s->spheres[id].material == DIFF) */ 
+/*         { */
+/*           nd = nn + random_unit_vec(); */
+/*           if (nd.zero()) */
+/*             nd = nn; */
+/*         } else if (s->spheres[id].material == REFL) */
+/*         { */
+/*           vec3d urd = vec3d::unit(r.d); */
+/*           nd = reflect(urd, nn); */
+/*         } else { */
+/*           printf("ERROR: unknown material\n"); */
+/*         } */
+/*         return ray_color(c_ray(no, nd), s, depth).mul(&s->spheres[id].color); */
+/*       } */
+/*     } */
+/*   } */
+/*   vec3d n = vec3d::unit(r.o + r.d * t - vec3d(0, 0, -1)); */
+/*   return vec3d(n.x + 1, n.y + 1, n.z + 1); */
+/* } */
 
 int intersect(c_ray ray, c_scene_t *scene, double *t, int *id)
 {
@@ -167,6 +176,31 @@ int intersect(c_ray ray, c_scene_t *scene, double *t, int *id)
     }
   }
   return *t < inf;
+}
+
+bool collide(c_ray_t r, c_scene_t *s, c_hit *h)
+{
+  c_hit_t dh;
+  bool found_hit = false;
+  double dt = 1e20;
+
+  for (int k = 0; k < s->num_spheres; ++k) {
+    if (s->spheres[k].hit(r, &dh, 0, dt)) {
+      found_hit = true;
+      dt = dh.t;
+      *h = dh;
+    }
+  }
+  return found_hit;
+}
+
+vec3d ray_color(c_ray r, c_scene_t *s, int depth = 0, int max_depth = 50)
+{
+  c_hit h;
+  if (collide(r, s, &h)) {
+    return (h.n + vec3d(1, 1, 1));
+  }
+  return vec3d(0, 0, 0);
 }
 
 vec3d radiance(c_ray &r, c_scene_t *scene, int depth, unsigned short *Xi)
@@ -244,20 +278,8 @@ void rt(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene, cam *cam)
     for (int i = 0; i < w; ++i, c=vec3d(0, 0, 0)) {
       for (int s = 0; s < cam->spp; ++s, t=0, dt=1e20, id=-1) {
         c_ray r = cam->get_ray(i, j);
-        c = c + ray_color(r, scene);
-        /* for (int k = 0; k < scene->num_spheres; ++k) { */
-        /*   if ((t = scene->spheres[k].intersect(r)) && t > 0) { */
-        /*     if (t < dt) { */
-        /*       dt = t; */
-        /*       id = k; */
-        /*     } */
-        /*   } */
-        /* } */
-        /* if (id >= 0) { */
-        /*   /1* vec3d nn = vec3d::unit(r.o + r.d * t - vec3d(0, 0, -1)); *1/ */
-        /*   /1* c = c + vec3d(nn.x + 1, nn.y + 1, nn.z + 1); *1/ */
-        /*   c = c + scene->spheres[id].color; */
-        /* } */
+        /* c = c + ray_color(r, scene); */
+        c = ray_color(r, scene);
       }
       c = c / cam->spp;
       img[j*w + i] = C_RGBA(toInt(c.x), toInt(c.y), toInt(c.z), 255);
@@ -272,7 +294,7 @@ int main(int argc, char **argv)
   int args = parse_args(&s, &argc, &argv);
   if (args < 0) return 1;
 
-  if (args == ARG_HELP){
+  if (args == ARG_HELP_R){
     fputs(show_help, stdout);
     return 0;
   }
@@ -280,9 +302,9 @@ int main(int argc, char **argv)
 
   c_sphere spheres[] = {
     /* radius, pos, color, emission, material */
+    { 100,vec3d(0,-100.5,-1),vec3d(.8,.8,.0),vec3d(.8,.3, 0),DIFF },
     { .5, vec3d(0,0,-1),     vec3d(.7,.3,.3),vec3d(.8,.8,.3),DIFF },
     { .5, vec3d(1,0,-1),     vec3d(.8,.6,.2),vec3d(.8,.8,.8),REFL },
-    { 100,vec3d(0,-100.5,-1),vec3d(.8,.8,.0),vec3d(.8,.3, 0),DIFF },
   };
   c_scene_t scene = {
     .spheres = spheres,

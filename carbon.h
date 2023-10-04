@@ -63,7 +63,7 @@ struct vec3d {
   vec3d prod(vec3d *v)               const { return vec3d(y * v->z - z * v->y, 
                                                           z * v->x - x * v->z, x * v->y - y * v->x); }
   /* length of vector */
-  double len()                       const { return x * x + y * y + z * z; }
+  double len()                       const { return sqrt(x * x + y * y + z * z); }
   /* random vector */
   static vec3d rand()                      { return vec3d(randd(), randd(), randd()); }
   static vec3d rand(double l, double h)    { return vec3d(randd(l,h), randd(l,h), randd(l,h)); }
@@ -80,10 +80,23 @@ struct vec3d {
  * A point along the ray can be defined using a parameter, t:
  * p(t) = o + t*d
 */
-struct c_ray { 
+typedef struct c_ray { 
   vec3d o, d; 
   c_ray(vec3d o_, vec3d d_) : o(o_), d(d_) {} 
-};
+} c_ray_t;
+
+typedef struct c_hit {
+  /* hit point origin and normal */
+  vec3d o, n;
+  double t;
+  /* Front face of the hit */
+  bool ff;
+
+  void set_ff_n(c_ray& r, vec3d& on) {
+    ff = r.d.dot(&on) < 0;
+    this->n = ff ? on : on * -1;
+  }
+} c_hit_t;
 
 /* Camera */
 struct cam {
@@ -133,11 +146,22 @@ private:
   vec3d vu, vv;
 };
 
+typedef enum arg_types {
+  ARG_HELP    = 0,
+  ARG_S       = 1,
+  ARG_W       = 2,
+  ARG_H       = 3,
+  ARG_O       = 4,
+  ARG_CUDA    = 5,
+  ARG_UNKNOWN = 6,
+} arg_types_t;
+
 typedef struct state {
   /* image width and height */
   uint32_t w;
   uint32_t h;
   uint32_t samples_per_pixel;
+  uint32_t max_depth = 10;
   /* use cuda */
   unsigned char cuda;
   /* output filename */
