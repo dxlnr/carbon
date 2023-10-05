@@ -73,8 +73,14 @@ struct vec3d {
   bool zero(double s = 1e-8) { return (fabs(x) < s) && (fabs(y) < s) && (fabs(z) < s); }
 };
 
-/* 
- * c_ray
+typedef enum c_material {
+  DIFF,  
+  REFL,
+  SPEC,
+  REFR,
+} c_material_t;
+
+/* c_ray
  *
  * A ray is a parametric line with an origin (o) and a direction (d). 
  * A point along the ray can be defined using a parameter, t:
@@ -85,10 +91,16 @@ typedef struct c_ray {
   c_ray(vec3d o_, vec3d d_) : o(o_), d(d_) {} 
 } c_ray_t;
 
+
 typedef struct c_hit {
   /* hit point origin and normal */
   vec3d o, n;
+  /* distance */
   double t;
+  /* color */
+  vec3d col;
+  /* material */
+  c_material_t mat;
   /* Front face of the hit */
   bool ff;
 
@@ -98,15 +110,72 @@ typedef struct c_hit {
   }
 } c_hit_t;
 
+struct c_sphere {
+  double radius;
+  /* center */
+  vec3d pos;
+  vec3d color;
+  vec3d emission;
+  c_material_t material;
+
+  int hit(c_ray_t r, c_hit_t *ch, double tmin = 0, double tmax = 1e20) {
+    vec3d oc = r.o - this->pos;
+    double a = r.d.dot(&r.d); 
+    double b = (r.d).dot(&oc);
+    double c = oc.dot(&oc) - (this->radius * this->radius);
+
+    double sd = b * b - (a * c);
+    if (sd < 0) return 0;
+
+    double sqrtd = sqrt(sd);
+    double root = (-b - sqrtd) / a;
+    if (root <= tmin || tmax <= root) {
+      root = (-b + sqrtd) / a;
+      if (root <= tmin || tmax <= root)
+        return 0;
+    }
+
+    ch->t = root;
+    ch->o = r.o + r.d * root;
+    vec3d on = (ch->o - pos) / radius;
+    ch->set_ff_n(r, on);
+
+    return 1;
+  }
+
+  double intersect(c_ray r) {
+    vec3d oc = r.o - this->pos;
+    double a = r.d.dot(&r.d); 
+    double b = (r.d * 2.0).dot(&oc);
+    double c = oc.dot(&oc) - (this->radius * this->radius);
+
+    double sd = b * b - (a * 4.0 * c);
+    if (sd < 0) return 0;
+    else return (-b - sqrt(sd)) / (2.0 * a);
+  }
+};
+
+struct c_plane {
+  vec3d normal;
+  vec3d pos;
+  vec3d color;
+  vec3d emission;
+  c_material_t material;
+};
+
+/* Scenery */
+typedef struct c_scene {
+  c_sphere *spheres;
+  uint32_t num_spheres;
+} c_scene_t;
+
 /* Camera */
 struct cam {
   uint32_t w, h;
   /* Camera origin */
   vec3d origin;
   /* Count of random samples for each pixel */
-  uint32_t spp = 10;
-  /* Maximum number of ray bounces into scene */
-  uint32_t maxd              = 10;
+  uint32_t spp        = 10;
   /* Vertical view angle (field of view) */
   double vfov                = 90;
 
@@ -158,10 +227,12 @@ typedef enum arg_types {
 
 typedef struct state {
   /* image width and height */
-  uint32_t w;
-  uint32_t h;
-  uint32_t samples_per_pixel;
-  uint32_t max_depth = 10;
+  uint32_t w          = 1280;
+  uint32_t h          = 960;
+  /* Count of random samples for each pixel */
+  uint32_t spp        = 10;
+  /* Maximum number of ray bounces into scene */
+  uint32_t maxd       = 10;
   /* use cuda */
   unsigned char cuda;
   /* output filename */
@@ -169,7 +240,7 @@ typedef struct state {
   /* image buffer */
   uint32_t *im_buffer;
 
-  state(){ w = 1280, h = 960, samples_per_pixel = 10, cuda = 0, outfile = (char *) "out";}
+  state(){ outfile = (char *) "out"; }
 } state_t;
 
 #endif

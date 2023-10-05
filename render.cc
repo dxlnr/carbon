@@ -22,7 +22,6 @@
  * */
 
 #include "carbon.h"
-#include "scene.h"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
@@ -49,7 +48,7 @@ char *concat_strs(char *s1, char *s2)
 {
   char *con = (char *) malloc(strlen(s1) + strlen(s2) + 1);  
   if (!con) {
-    perror("Unable to allocate memory");
+    perror("Unable to allocate memory.");
     return NULL;
   }
   strcpy(con, s1);
@@ -76,7 +75,7 @@ int parse_args(state_t *s, int *argc, char ***argv)
         return ARG_HELP_R;
       case ARG_S:
         if (++i >= *argc) goto check_num_err;
-        s->samples_per_pixel = atoi((*argv)[i]);
+        s->spp = atoi((*argv)[i]);
         break;
       case ARG_O:
         if (++i >= *argc) goto check_num_err;
@@ -127,43 +126,6 @@ vec3d reflect(vec3d &v, vec3d &n) {
   return (v - 2 * v.dot(&n)).mul(&n);
 }
 
-/* vec3d ray_color(c_ray r, c_scene_t *s, int depth = 0, int max_depth = 50) */
-/* { */
-/*   int id = -1; */
-/*   double t  = 0; */
-/*   double dt = 1e20; */
-/*   vec3d no, nn, nd; */
-
-/*   if (++depth > max_depth) return vec3d(0, 0, 0); */
-
-/*   // TODO: rewrite as this always detects the first sphere (not the closest) */
-/*   for (int k = 0; k < s->num_spheres; ++k) { */
-/*     if ((t = s->spheres[k].intersect(r)) && t > 0) { */
-/*       if (t < dt) { */
-/*         dt = t; */
-/*         id = k; */
-/*         no = r.o + r.d * t; */ 
-/*         nn = (no - s->spheres[id].pos).norm(); */
-/*         if (s->spheres[id].material == DIFF) */ 
-/*         { */
-/*           nd = nn + random_unit_vec(); */
-/*           if (nd.zero()) */
-/*             nd = nn; */
-/*         } else if (s->spheres[id].material == REFL) */
-/*         { */
-/*           vec3d urd = vec3d::unit(r.d); */
-/*           nd = reflect(urd, nn); */
-/*         } else { */
-/*           printf("ERROR: unknown material\n"); */
-/*         } */
-/*         return ray_color(c_ray(no, nd), s, depth).mul(&s->spheres[id].color); */
-/*       } */
-/*     } */
-/*   } */
-/*   vec3d n = vec3d::unit(r.o + r.d * t - vec3d(0, 0, -1)); */
-/*   return vec3d(n.x + 1, n.y + 1, n.z + 1); */
-/* } */
-
 int intersect(c_ray ray, c_scene_t *scene, double *t, int *id)
 {
   double dt;
@@ -178,29 +140,47 @@ int intersect(c_ray ray, c_scene_t *scene, double *t, int *id)
   return *t < inf;
 }
 
-bool collide(c_ray_t r, c_scene_t *s, c_hit *h)
+bool collide(c_ray_t r, c_scene_t *s, c_hit_t *h)
 {
   c_hit_t dh;
   bool found_hit = false;
   double dt = 1e20;
 
   for (int k = 0; k < s->num_spheres; ++k) {
-    if (s->spheres[k].hit(r, &dh, 0, dt)) {
+    if (s->spheres[k].hit(r, &dh, 0.001, dt)) {
       found_hit = true;
       dt = dh.t;
+      dh.mat = s->spheres[k].material;
+      dh.col = s->spheres[k].color;
       *h = dh;
     }
   }
   return found_hit;
 }
 
-vec3d ray_color(c_ray r, c_scene_t *s, int depth = 0, int max_depth = 50)
+vec3d ray_color(c_ray_t r, c_scene_t *s, int depth = 0, int max_depth = 50)
 {
   c_hit h;
+  vec3d nd;
+
+  if (++depth >= max_depth) return vec3d(0, 0, 0);
+
   if (collide(r, s, &h)) {
-    return (h.n + vec3d(1, 1, 1));
+    if (h.mat == DIFF) {
+      nd = h.n + random_unit_vec();
+      if (nd.zero())
+        nd = h.n;
+    } else if (h.mat == REFL) {
+      vec3d urd = vec3d::unit(r.d);
+      nd = reflect(urd, h.n);
+    } else {
+      return vec3d(0, 0, 0);
+    }
+    return ray_color(c_ray(h.o, nd), s, depth).mul(&h.col);
   }
-  return vec3d(0, 0, 0);
+  vec3d ud = vec3d::unit(r.d);
+  double a = (ud.y + 1.0) * 0.5;
+  return vec3d(1.0, 1.0, 1.0) * (1.0 - a) + vec3d(.5,.7, 1.0) * a;
 }
 
 vec3d radiance(c_ray &r, c_scene_t *scene, int depth, unsigned short *Xi)
@@ -267,7 +247,7 @@ void pt(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene, cam *cam)
   }
 }
 
-void rt(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene, cam *cam)
+void rt(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene, cam *cam, int maxd)
 {
   int id = 0;
   vec3d c;
@@ -278,8 +258,7 @@ void rt(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene, cam *cam)
     for (int i = 0; i < w; ++i, c=vec3d(0, 0, 0)) {
       for (int s = 0; s < cam->spp; ++s, t=0, dt=1e20, id=-1) {
         c_ray r = cam->get_ray(i, j);
-        /* c = c + ray_color(r, scene); */
-        c = ray_color(r, scene);
+        c = c + ray_color(r, scene, 0, maxd);
       }
       c = c / cam->spp;
       img[j*w + i] = C_RGBA(toInt(c.x), toInt(c.y), toInt(c.z), 255);
@@ -311,10 +290,10 @@ int main(int argc, char **argv)
     .num_spheres = sizeof(spheres) / sizeof(spheres[0]),
   };
 
-  cam cam; cam.init(s.w, s.h, s.samples_per_pixel);
+  cam cam; cam.init(s.w, s.h, s.spp);
 
   /* pt(IBUF, WIDTH, HEIGHT, &scene); */
-  rt(im_buf, s.w, s.h, &scene, &cam);
+  rt(im_buf, s.w, s.h, &scene, &cam, s.maxd);
 
   char *out_file = concat_strs(s.outfile, (char *) ".png");
   if (out_file == NULL) {
