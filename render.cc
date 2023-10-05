@@ -39,6 +39,7 @@ static const char show_help[] =
   "  -w                  Width of the output image.\n"
   "  -h                  Height of the output image.\n"
   "  -s                  Number of samples per pixel used in rendering algorithm.\n"
+  "  -maxd               Maximum depth of the raytracing algorithm.\n"
   "  -cuda               Use CUDA for rendering.\n"
   "  -t                  Number of threads used in rendering algorithm.\n"
   "  -v                  Verbose mode.\n"
@@ -62,6 +63,7 @@ int get_arg_type(const char* arg)
   if (!strcmp(arg, "-s"))    return ARG_S;
   if (!strcmp(arg, "-w"))    return ARG_W;
   if (!strcmp(arg, "-h"))    return ARG_H;
+  if (!strcmp(arg, "-maxd")) return ARG_MAXD;
   if (!strcmp(arg, "-o"))    return ARG_O;
   if (!strcmp(arg, "-cuda")) return ARG_CUDA;
   return ARG_UNKNOWN;
@@ -74,20 +76,24 @@ int parse_args(state_t *s, int *argc, char ***argv)
       case ARG_HELP:
         return ARG_HELP_R;
       case ARG_S:
-        if (++i >= *argc) goto check_num_err;
+        if (++i >= *argc) goto check_arg_err;
         s->spp = atoi((*argv)[i]);
         break;
       case ARG_O:
-        if (++i >= *argc) goto check_num_err;
+        if (++i >= *argc) goto check_arg_err;
         s->outfile = (*argv)[i];
         break;
       case ARG_W:
-        if (++i >= *argc) goto check_num_err;
+        if (++i >= *argc) goto check_arg_err;
         s->w = atoi((*argv)[i]);
         break;
       case ARG_H:
-        if (++i >= *argc) goto check_num_err;
+        if (++i >= *argc) goto check_arg_err;
         s->h = atoi((*argv)[i]);
+        break;
+      case ARG_MAXD:
+        if (++i >= *argc) goto check_arg_err;
+        s->maxd = atoi((*argv)[i]);
         break;
       case ARG_CUDA:
         s->cuda = 1;
@@ -96,7 +102,7 @@ int parse_args(state_t *s, int *argc, char ***argv)
         fprintf(stderr, "ERROR: unknown option %s\n", (*argv)[i-1]);
         return -1;
 
-    check_num_err:
+    check_arg_err:
         fprintf(stderr, "ERROR: %s requires an argument.\n", (*argv)[i-1]);
         return -1;
     }
@@ -123,7 +129,7 @@ vec3d random_vec_on_hemisphere(vec3d& n) {
 }
 
 vec3d reflect(vec3d &v, vec3d &n) {
-  return (v - 2 * v.dot(&n)).mul(&n);
+  return v - n * (2 * v.dot(&n));
 }
 
 int intersect(c_ray ray, c_scene_t *scene, double *t, int *id)
@@ -180,7 +186,7 @@ vec3d ray_color(c_ray_t r, c_scene_t *s, int depth = 0, int max_depth = 50)
   }
   vec3d ud = vec3d::unit(r.d);
   double a = (ud.y + 1.0) * 0.5;
-  return vec3d(1.0, 1.0, 1.0) * (1.0 - a) + vec3d(.5,.7, 1.0) * a;
+  return vec3d(1.0, 1.0, 1.0) * (1.0 - a) + vec3d(0.5, 0.7, 1.0) * a;
 }
 
 vec3d radiance(c_ray &r, c_scene_t *scene, int depth, unsigned short *Xi)
@@ -281,9 +287,9 @@ int main(int argc, char **argv)
 
   c_sphere spheres[] = {
     /* radius, pos, color, emission, material */
-    { 100,vec3d(0,-100.5,-1),vec3d(.8,.8,.0),vec3d(.8,.3, 0),DIFF },
-    { .5, vec3d(0,0,-1),     vec3d(.7,.3,.3),vec3d(.8,.8,.3),DIFF },
-    { .5, vec3d(1,0,-1),     vec3d(.8,.6,.2),vec3d(.8,.8,.8),REFL },
+    { 1000,vec3d(0,-1000.5,-1),vec3d(.1,.6,.9),vec3d(.8,.3, 0),DIFF },
+    { .5,  vec3d(0,0,-1),      vec3d(.7,.3,.3),vec3d(.8,.8,.3),DIFF },
+    { .5,  vec3d(1,0,-1),      vec3d(.8,.6,.2),vec3d(.8,.8,.8),REFL },
   };
   c_scene_t scene = {
     .spheres = spheres,

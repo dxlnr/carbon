@@ -220,9 +220,10 @@ typedef enum arg_types {
   ARG_S       = 1,
   ARG_W       = 2,
   ARG_H       = 3,
-  ARG_O       = 4,
-  ARG_CUDA    = 5,
-  ARG_UNKNOWN = 6,
+  ARG_MAXD    = 4,
+  ARG_O       = 5,
+  ARG_CUDA    = 6,
+  ARG_UNKNOWN = 7,
 } arg_types_t;
 
 typedef struct state {
