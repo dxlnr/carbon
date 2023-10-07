@@ -36,6 +36,7 @@ static const char show_help[] =
   "General options:\n"
   "  -o <file>           Place the output into <file>.\n"
   "  -help               Display available options (-help-hidden for more).\n"
+  "  -pt                 Use the pathtracing algorithm.\n"
   "  -w                  Width of the output image.\n"
   "  -h                  Height of the output image.\n"
   "  -s                  Number of samples per pixel used in rendering algorithm.\n"
@@ -60,6 +61,7 @@ char *concat_strs(char *s1, char *s2)
 int get_arg_type(const char* arg) 
 {
   if (!strcmp(arg, "-help")) return ARG_HELP;
+  if (!strcmp(arg, "-pt"))   return ARG_PT;
   if (!strcmp(arg, "-s"))    return ARG_S;
   if (!strcmp(arg, "-w"))    return ARG_W;
   if (!strcmp(arg, "-h"))    return ARG_H;
@@ -75,6 +77,9 @@ int parse_args(state_t *s, int *argc, char ***argv)
     switch (get_arg_type((*argv)[i])) {
       case ARG_HELP:
         return ARG_HELP_R;
+      case ARG_PT:
+        s->pt= 1;
+        break;
       case ARG_S:
         if (++i >= *argc) goto check_arg_err;
         s->spp = atoi((*argv)[i]);
@@ -132,6 +137,20 @@ vec3d reflect(vec3d &v, vec3d &n) {
   return v - n * (2 * v.dot(&n));
 }
 
+vec3d refract(vec3d &d, vec3d &n, double refr) {
+  double cosa = fmin((d * -1.).dot(&n), 1.0);
+  vec3d rpe = (d + (n * cosa)) * refr;
+  vec3d rpa = n * -sqrt(fabs(1 - rpe.dot(&rpe)));
+  return rpe + rpa;
+}
+
+double reflect(double cos, double i) {
+  /* Schlick's approximation for reflectance. */
+  double r0 = (1 - i) / (1 + i);
+  r0 = r0 * r0;
+  return r0 + (1 - r0) * pow((1 - cos), 5);
+}
+
 int intersect(c_ray ray, c_scene_t *scene, double *t, int *id)
 {
   double dt;
@@ -179,6 +198,18 @@ vec3d ray_color(c_ray_t r, c_scene_t *s, int depth = 0, int max_depth = 50)
     } else if (h.mat == REFL) {
       vec3d urd = vec3d::unit(r.d);
       nd = reflect(urd, h.n);
+    } else if (h.mat == REFR) {
+      // TODO set the param for the material. This is basically glass now.
+      double rr = h.ff ? (1.0/1.4) : 1.4;
+      vec3d urd = vec3d::unit(r.d);
+
+      double c = fmin((urd * -1).dot(&h.n), 1.0);
+      double s = sqrt(1.0 - (c * c));
+
+      if ((rr * s > 1.0) || reflect(c, rr) > randd()) 
+        nd = reflect(urd, h.n);
+      else 
+        nd = refract(r.d, h.n, rr);
     } else {
       return vec3d(0, 0, 0);
     }
@@ -290,6 +321,7 @@ int main(int argc, char **argv)
     { 1000,vec3d(0,-1000.5,-1),vec3d(.1,.6,.9),vec3d(.8,.3, 0),DIFF },
     { .5,  vec3d(0,0,-1),      vec3d(.7,.3,.3),vec3d(.8,.8,.3),DIFF },
     { .5,  vec3d(1,0,-1),      vec3d(.8,.6,.2),vec3d(.8,.8,.8),REFL },
+    { .5,  vec3d(-1,0,-1),     vec3d(1.,1.,1.),vec3d(.8,.8,.8),REFR },
   };
   c_scene_t scene = {
     .spheres = spheres,
@@ -298,8 +330,10 @@ int main(int argc, char **argv)
 
   cam cam; cam.init(s.w, s.h, s.spp);
 
-  /* pt(IBUF, WIDTH, HEIGHT, &scene); */
-  rt(im_buf, s.w, s.h, &scene, &cam, s.maxd);
+  if (s.rt)
+    rt(im_buf, s.w, s.h, &scene, &cam, s.maxd);
+  else if (s.pt)
+    pt(im_buf, s.w, s.h, &scene, &cam);
 
   char *out_file = concat_strs(s.outfile, (char *) ".png");
   if (out_file == NULL) {

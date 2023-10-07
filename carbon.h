@@ -77,6 +77,7 @@ typedef enum c_material {
   DIFF,  
   REFL,
   SPEC,
+  /*  Refraction described by Snell’s law */
   REFR,
 } c_material_t;
 
@@ -217,13 +218,15 @@ private:
 
 typedef enum arg_types {
   ARG_HELP    = 0,
-  ARG_S       = 1,
-  ARG_W       = 2,
-  ARG_H       = 3,
-  ARG_MAXD    = 4,
-  ARG_O       = 5,
-  ARG_CUDA    = 6,
-  ARG_UNKNOWN = 7,
+  ARG_RT      = 1,
+  ARG_PT      = 2,
+  ARG_S       = 3,
+  ARG_W       = 4,
+  ARG_H       = 5,
+  ARG_MAXD    = 6,
+  ARG_O       = 7,
+  ARG_CUDA    = 8,
+  ARG_UNKNOWN = 9,
 } arg_types_t;
 
 typedef struct state {
@@ -234,6 +237,10 @@ typedef struct state {
   uint32_t spp        = 10;
   /* Maximum number of ray bounces into scene */
   uint32_t maxd       = 10;
+  /* Using the raytracing algorithm. */
+  unsigned char rt;
+  /* Using the pathtracing algorithm. */
+  unsigned char pt;
   /* use cuda */
   unsigned char cuda;
   /* output filename */
@@ -241,7 +248,7 @@ typedef struct state {
   /* image buffer */
   uint32_t *im_buffer;
 
-  state(){ outfile = (char *) "out"; }
+  state(){ rt = 1; outfile = (char *) "out"; }
 } state_t;
 
 #endif
