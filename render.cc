@@ -79,6 +79,7 @@ int parse_args(state_t *s, int *argc, char ***argv)
         return ARG_HELP_R;
       case ARG_PT:
         s->pt= 1;
+        s->rt= 0;
         break;
       case ARG_S:
         if (++i >= *argc) goto check_arg_err;
@@ -125,7 +126,8 @@ vec3d random_unit_vec()
   }
 }
 
-vec3d random_vec_on_hemisphere(vec3d& n) {
+vec3d random_vec_on_hemisphere(vec3d& n) 
+{
   vec3d p = random_unit_vec();
   if (p.dot(&n) > 0.0)
     return p;
@@ -133,22 +135,25 @@ vec3d random_vec_on_hemisphere(vec3d& n) {
     return p * -1;
 }
 
-vec3d reflect(vec3d &v, vec3d &n) {
+vec3d reflect(vec3d &v, vec3d &n) 
+{
   return v - n * (2 * v.dot(&n));
 }
 
-vec3d refract(vec3d &d, vec3d &n, double refr) {
+vec3d refract(vec3d &d, vec3d &n, double refr) 
+{
   double cosa = fmin((d * -1.).dot(&n), 1.0);
   vec3d rpe = (d + (n * cosa)) * refr;
   vec3d rpa = n * -sqrt(fabs(1 - rpe.dot(&rpe)));
   return rpe + rpa;
 }
 
-double reflect(double cos, double i) {
+double reflect(double cosine, double i) 
+{
   /* Schlick's approximation for reflectance. */
   double r0 = (1 - i) / (1 + i);
   r0 = r0 * r0;
-  return r0 + (1 - r0) * pow((1 - cos), 5);
+  return r0 + (1 - r0) * pow((1 - cosine), 5);
 }
 
 int intersect(c_ray ray, c_scene_t *scene, double *t, int *id)
@@ -264,7 +269,7 @@ vec3d radiance(c_ray &r, c_scene_t *scene, int depth, unsigned short *Xi)
   return obj.emission;
 }
 
-void pt(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene, cam *cam)
+void pt(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene, cam_t *cam)
 {
   int id = 0;
   vec3d c;
@@ -284,7 +289,7 @@ void pt(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene, cam *cam)
   }
 }
 
-void rt(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene, cam *cam, int maxd)
+void rt(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene, cam_t *cam, int maxd)
 {
   int id = 0;
   vec3d c;

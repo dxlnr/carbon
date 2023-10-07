@@ -171,7 +171,7 @@ typedef struct c_scene {
 } c_scene_t;
 
 /* Camera */
-struct cam {
+typedef struct cam {
   uint32_t w, h;
   /* Camera origin */
   vec3d origin;
@@ -214,7 +214,7 @@ struct cam {
 private:
   vec3d p0;
   vec3d vu, vv;
-};
+} cam_t;
 
 typedef enum arg_types {
   ARG_HELP    = 0,
