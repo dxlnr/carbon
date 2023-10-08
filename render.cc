@@ -156,7 +156,7 @@ double reflect(double cosine, double i)
   return r0 + (1 - r0) * pow((1 - cosine), 5);
 }
 
-int intersect(c_ray ray, c_scene_t *scene, double *t, int *id)
+int intersect(c_ray_t ray, c_scene_t *scene, double *t, int *id)
 {
   double dt;
   double inf=*t=1e20;
@@ -225,7 +225,7 @@ vec3d ray_color(c_ray_t r, c_scene_t *s, int depth = 0, int max_depth = 50)
   return vec3d(1.0, 1.0, 1.0) * (1.0 - a) + vec3d(0.5, 0.7, 1.0) * a;
 }
 
-vec3d radiance(c_ray &r, c_scene_t *scene, int depth, unsigned short *Xi)
+vec3d radiance(c_ray_t &r, c_scene_t *scene, int depth, unsigned short *Xi)
 {
   int id = 0;
   double t;
@@ -333,17 +333,22 @@ int main(int argc, char **argv)
     .num_spheres = sizeof(spheres) / sizeof(spheres[0]),
   };
 
-  cam cam; cam.init(s.w, s.h, s.spp);
+  cam_t cam; cam.init_dyn(s.w, s.h, s.spp);
 
-  if (s.rt)
+  if (s.rt) {
     rt(im_buf, s.w, s.h, &scene, &cam, s.maxd);
-  else if (s.pt)
+  } else if (s.pt) {
     pt(im_buf, s.w, s.h, &scene, &cam);
+  } else {
+    fprintf(stderr, "ERROR: no algorithm selected.\n");
+    return 1;
+  }
 
   char *out_file = concat_strs(s.outfile, (char *) ".png");
   if (out_file == NULL) {
     return 0;
   }
+  printf("\nSave as : %s\n", out_file);
 
   if (!stbi_write_png(out_file, s.w, s.h, 4, im_buf, sizeof(uint32_t)*s.w)) {
     fprintf(stderr, "ERROR: could not write %s\n", out_file);
