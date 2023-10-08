@@ -319,26 +319,31 @@ int main(int argc, char **argv)
     fputs(show_help, stdout);
     return 0;
   }
-  uint32_t im_buf[s.h*s.w];
+
+  s.im_buffer = (uint32_t *)malloc(s.h * s.w * sizeof(uint32_t));
+  if (s.im_buffer == NULL) {
+    perror("Unable to allocate memory for image buffer.");
+    return 1;
+  }
 
   c_sphere spheres[] = {
     /* radius, pos, color, emission, material */
-    { 1000,vec3d(0,-1000.5,-1),vec3d(.1,.6,.9),vec3d(.8,.3, 0),DIFF },
-    { .5,  vec3d(0,0,-1),      vec3d(.7,.3,.3),vec3d(.8,.8,.3),DIFF },
-    { .5,  vec3d(1,0,-1),      vec3d(.8,.6,.2),vec3d(.8,.8,.8),REFL },
-    { .5,  vec3d(-1,0,-1),     vec3d(1.,1.,1.),vec3d(.8,.8,.8),REFR },
+    { 1000,vec3d(0,-1000.5,-5),vec3d(.1,.6,.9),vec3d(.8,.3, 0),DIFF },
+    { .5,  vec3d(0,0,-5),      vec3d(.7,.3,.3),vec3d(.8,.8,.3),DIFF },
+    { .5,  vec3d(1,0,-5),      vec3d(.8,.6,.2),vec3d(.8,.8,.8),REFL },
+    { .5,  vec3d(-1,0,-5),     vec3d(1.,1.,1.),vec3d(.8,.8,.8),REFR },
   };
   c_scene_t scene = {
     .spheres = spheres,
     .num_spheres = sizeof(spheres) / sizeof(spheres[0]),
   };
 
-  cam_t cam; cam.init_dyn(s.w, s.h, s.spp);
+  cam_t cam; cam.init(s.w, s.h, s.spp);
 
   if (s.rt) {
-    rt(im_buf, s.w, s.h, &scene, &cam, s.maxd);
+    rt(s.im_buffer, s.w, s.h, &scene, &cam, s.maxd);
   } else if (s.pt) {
-    pt(im_buf, s.w, s.h, &scene, &cam);
+    pt(s.im_buffer, s.w, s.h, &scene, &cam);
   } else {
     fprintf(stderr, "ERROR: no algorithm selected.\n");
     return 1;
@@ -350,7 +355,7 @@ int main(int argc, char **argv)
   }
   printf("\nSave as : %s\n", out_file);
 
-  if (!stbi_write_png(out_file, s.w, s.h, 4, im_buf, sizeof(uint32_t)*s.w)) {
+  if (!stbi_write_png(out_file, s.w, s.h, 4, s.im_buffer, sizeof(uint32_t)*s.w)) {
     fprintf(stderr, "ERROR: could not write %s\n", out_file);
     return 1;
   }

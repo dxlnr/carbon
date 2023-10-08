@@ -174,40 +174,21 @@ typedef struct c_scene {
 typedef struct cam {
   uint32_t w, h;
   /* Camera origin */
-  vec3d center   = vec3d(0, 0, 0);
-  /* Camera origin */
-  vec3d origin   = vec3d(0, 0, -1);
+  vec3d origin   = vec3d(-2, 2, 2);
   /* Vertical view angle (field of view) */
   double vfov    = 90;
-  /* Reference point. */
-  vec3d refp     = vec3d(0, 0, 0);   
+  /* Reference or proxy point where the camera looks at. */
+  vec3d refp     = vec3d(0, 0, -1);
   /* Camera-relative "up" direction */
-  vec3d vup      = vec3d(0, 1, 0);  
+  vec3d vup      = vec3d(0, 1, 0);
   /* Count of random samples for each pixel */
   uint32_t spp   = 10;
 
-  void init_static(uint32_t w_, uint32_t h_, uint32_t spp_) {
+  void init(uint32_t w_, uint32_t h_, uint32_t spp_) {
     w = w_;
     h = h_;
     spp = spp_;
-    origin = vec3d(0, 0, 0);
-
-    double focal_l = 1.0;
-    double vp_h =  2.0;
-    double vp_w = vp_h * (static_cast<double>(w) / h);
-
-    this->vu = vec3d(vp_w, 0, 0);
-    this->vv = vec3d(0, -vp_h, 0);
-
-    vec3d vp_up_left = origin - vec3d(0, 0, focal_l) - vu / 2 - vv / 2;
-    this->p0 = vp_up_left + (vu / w + vv / h) * 0.5;
-  }
-
-  void init_dyn(uint32_t w_, uint32_t h_, uint32_t spp_) {
-    w = w_;
-    h = h_;
-    spp = spp_;
-    center = origin;
+    origin = vec3d(0,0,0);
 
     double focal_l = (origin - refp).len();
     double theta = degr_to_rad(vfov);
@@ -216,14 +197,14 @@ typedef struct cam {
     double vp_h = 2 * th * focal_l;
     double vp_w = vp_h * (static_cast<double>(w) / h);
 
-    this->cw = vec3d::unit(origin - refp);
-    this->cu = vec3d::unit(vup.prod(&this->cw));
-    this->cv = cw.prod(&this->cu);
+    cw = vec3d::unit(origin - refp);
+    cu = vec3d::unit(vup.prod(&cw));
+    cv = cw.prod(&cu);
 
-    this->vu = this->cu * vp_w;
-    this->vv = this->cv * -vp_h;
+    this->vu = cu * vp_w;
+    this->vv = cv * -vp_h;
 
-    vec3d vp_up_left = center - (cw * focal_l) - vu / 2 - vv / 2;
+    vec3d vp_up_left = origin - (cw * focal_l) - (vu / 2) - (vv / 2);
     this->p0 = vp_up_left + (vu / w + vv / h) * 0.5;
   }
 
