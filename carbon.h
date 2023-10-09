@@ -74,7 +74,9 @@ struct vec3d {
 };
 
 typedef enum c_material {
+  /*  Diffusion */
   DIFF,  
+  /*  Reflection */
   REFL,
   SPEC,
   /*  Refraction described by Snell’s law */
@@ -93,6 +95,10 @@ typedef struct c_ray {
 } c_ray_t;
 
 
+/* c_hit
+ *
+ * Cache for storing the latest intersected object.
+ */
 typedef struct c_hit {
   /* hit point origin and normal */
   vec3d o, n;
@@ -100,9 +106,11 @@ typedef struct c_hit {
   double t;
   /* color */
   vec3d col;
+  /* idx of refraction */
+  double ir;
   /* material */
   c_material_t mat;
-  /* Front face of the hit */
+  /* front face of the hit */
   bool ff;
 
   void set_ff_n(c_ray& r, vec3d& on) {
@@ -117,6 +125,7 @@ struct c_sphere {
   vec3d pos;
   vec3d color;
   vec3d emission;
+  double ir       = 1.0;
   c_material_t material;
 
   int hit(c_ray_t r, c_hit_t *ch, double tmin = 0, double tmax = 1e20) {
@@ -174,7 +183,7 @@ typedef struct c_scene {
 typedef struct cam {
   uint32_t w, h;
   /* Camera origin */
-  vec3d origin   = vec3d(-2, 2, 2);
+  vec3d origin   = vec3d(0, 0, 0);
   /* Vertical view angle (field of view) */
   double vfov    = 90;
   /* Reference or proxy point where the camera looks at. */
@@ -184,11 +193,11 @@ typedef struct cam {
   /* Count of random samples for each pixel */
   uint32_t spp   = 10;
 
-  void init(uint32_t w_, uint32_t h_, uint32_t spp_) {
+  void init(uint32_t w_, uint32_t h_, uint32_t spp_, double vfov_) {
     w = w_;
     h = h_;
     spp = spp_;
-    origin = vec3d(0,0,0);
+    vfov = vfov_;
 
     double focal_l = (origin - refp).len();
     double theta = degr_to_rad(vfov);
@@ -230,16 +239,17 @@ private:
 } cam_t;
 
 typedef enum arg_types {
-  ARG_HELP    = 0,
-  ARG_RT      = 1,
-  ARG_PT      = 2,
-  ARG_S       = 3,
-  ARG_W       = 4,
-  ARG_H       = 5,
-  ARG_MAXD    = 6,
-  ARG_O       = 7,
-  ARG_CUDA    = 8,
-  ARG_UNKNOWN = 9,
+  ARG_HELP    =  0,
+  ARG_RT      =  1,
+  ARG_PT      =  2,
+  ARG_S       =  3,
+  ARG_W       =  4,
+  ARG_H       =  5,
+  ARG_VFOV    =  6,
+  ARG_MAXD    =  7,
+  ARG_O       =  8,
+  ARG_CUDA    =  9,
+  ARG_UNKNOWN = 10,
 } arg_types_t;
 
 typedef struct state {
@@ -251,17 +261,19 @@ typedef struct state {
   /* Maximum number of ray bounces into scene */
   uint32_t maxd       = 10;
   /* Using the raytracing algorithm. */
-  unsigned char rt;
+  unsigned char rt    = 1;
   /* Using the pathtracing algorithm. */
-  unsigned char pt;
+  unsigned char pt    = 0;
+  /* Camera params */
+  double vfov         = 90;
   /* use cuda */
-  unsigned char cuda;
+  unsigned char cuda  = 0;
   /* output filename */
   char *outfile; 
   /* image buffer */
   uint32_t *im_buffer;
 
-  state(){ rt = 1; outfile = (char *) "out"; }
+  state(){ outfile = (char *) "out"; }
 } state_t;
 
 #endif

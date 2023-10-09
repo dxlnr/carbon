@@ -39,6 +39,7 @@ static const char show_help[] =
   "  -pt                 Use the pathtracing algorithm.\n"
   "  -w                  Width of the output image.\n"
   "  -h                  Height of the output image.\n"
+  "  -vfov               Vertical field of view.\n"
   "  -s                  Number of samples per pixel used in rendering algorithm.\n"
   "  -maxd               Maximum depth of the raytracing algorithm.\n"
   "  -cuda               Use CUDA for rendering.\n"
@@ -65,6 +66,7 @@ int get_arg_type(const char* arg)
   if (!strcmp(arg, "-s"))    return ARG_S;
   if (!strcmp(arg, "-w"))    return ARG_W;
   if (!strcmp(arg, "-h"))    return ARG_H;
+  if (!strcmp(arg, "-vfov")) return ARG_VFOV;
   if (!strcmp(arg, "-maxd")) return ARG_MAXD;
   if (!strcmp(arg, "-o"))    return ARG_O;
   if (!strcmp(arg, "-cuda")) return ARG_CUDA;
@@ -96,6 +98,10 @@ int parse_args(state_t *s, int *argc, char ***argv)
       case ARG_H:
         if (++i >= *argc) goto check_arg_err;
         s->h = atoi((*argv)[i]);
+        break;
+      case ARG_VFOV:
+        if (++i >= *argc) goto check_arg_err;
+        s->vfov = atoi((*argv)[i]);
         break;
       case ARG_MAXD:
         if (++i >= *argc) goto check_arg_err;
@@ -179,10 +185,11 @@ bool collide(c_ray_t r, c_scene_t *s, c_hit_t *h)
   for (int k = 0; k < s->num_spheres; ++k) {
     if (s->spheres[k].hit(r, &dh, 0.001, dt)) {
       found_hit = true;
-      dt = dh.t;
+      dt     = dh.t;
       dh.mat = s->spheres[k].material;
       dh.col = s->spheres[k].color;
-      *h = dh;
+      dh.ir  = s->spheres[k].ir;
+      *h     = dh;
     }
   }
   return found_hit;
@@ -204,8 +211,7 @@ vec3d ray_color(c_ray_t r, c_scene_t *s, int depth = 0, int max_depth = 50)
       vec3d urd = vec3d::unit(r.d);
       nd = reflect(urd, h.n);
     } else if (h.mat == REFR) {
-      // TODO set the param for the material. This is basically glass now.
-      double rr = h.ff ? (1.0/1.4) : 1.4;
+      double rr = h.ff ? (1.0/h.ir) : h.ir;
       vec3d urd = vec3d::unit(r.d);
 
       double c = fmin((urd * -1).dot(&h.n), 1.0);
@@ -327,18 +333,19 @@ int main(int argc, char **argv)
   }
 
   c_sphere spheres[] = {
-    /* radius, pos, color, emission, material */
-    { 1000,vec3d(0,-1000.5,-5),vec3d(.1,.6,.9),vec3d(.8,.3, 0),DIFF },
-    { .5,  vec3d(0,0,-5),      vec3d(.7,.3,.3),vec3d(.8,.8,.3),DIFF },
-    { .5,  vec3d(1,0,-5),      vec3d(.8,.6,.2),vec3d(.8,.8,.8),REFL },
-    { .5,  vec3d(-1,0,-5),     vec3d(1.,1.,1.),vec3d(.8,.8,.8),REFR },
+    /* radius, pos, color, emission, index of refraction, material */
+    { 1000,vec3d(0,-1000.5,-1),vec3d(.9,.9,.9),vec3d(.8,.3, 0),1.,DIFF },
+    { .5,  vec3d(0,0,-3),      vec3d(.7,.3,.3),vec3d(.8,.8,.3),1.,DIFF },
+    { .5,  vec3d(1,0,-3),      vec3d(.8,.6,.2),vec3d(.8,.8,.8),1.,REFL },
+    { .5,  vec3d(-1,0,-3),     vec3d(.9,.9,.9),vec3d(.8,.8,.8),1.,REFL },
+    /* { .5,  vec3d(-1,0,-3),     vec3d(.9,.9,.9),vec3d(.8,.8,.8),1.5,REFR }, */
   };
   c_scene_t scene = {
     .spheres = spheres,
     .num_spheres = sizeof(spheres) / sizeof(spheres[0]),
   };
 
-  cam_t cam; cam.init(s.w, s.h, s.spp);
+  cam_t cam; cam.init(s.w, s.h, s.spp, s.vfov);
 
   if (s.rt) {
     rt(s.im_buffer, s.w, s.h, &scene, &cam, s.maxd);
