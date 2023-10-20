@@ -226,9 +226,10 @@ vec3d ray_color(c_ray_t r, c_scene_t *s, int depth = 0, int max_depth = 50)
     }
     return ray_color(c_ray(h.o, nd), s, depth).mul(&h.col);
   }
-  vec3d ud = vec3d::unit(r.d);
-  double a = (ud.y + 1.0) * 0.5;
-  return vec3d(1.0, 1.0, 1.0) * (1.0 - a) + vec3d(0.5, 0.7, 1.0) * a;
+  /* vec3d ud = vec3d::unit(r.d); */
+  /* double a = (ud.y + 1.0) * 0.5; */
+  /* return vec3d(1.0, 1.0, 1.0) * (1.0 - a) + vec3d(0.5, 0.7, 1.0) * a; */
+  return vec3d(.15, .15, .15);
 }
 
 vec3d radiance(c_ray_t &r, c_scene_t *scene, int depth, unsigned short *Xi)
@@ -334,7 +335,7 @@ int main(int argc, char **argv)
 
   c_sphere spheres[] = {
     /* radius, pos, color, emission, index of refraction, material */
-    { 1000,vec3d(0,-1000.5,-1),vec3d(.9,.9,.9),vec3d(.8,.3, 0),1.,DIFF },
+    { 1000,vec3d(0,-1000.5,-1),vec3d(.82,.82,.82),vec3d(.8,.3, 0),1.,DIFF },
     { .5,  vec3d(0,0,-3),      vec3d(.7,.3,.3),vec3d(.8,.8,.3),1.,DIFF },
     { .5,  vec3d(1,0,-3),      vec3d(.8,.6,.2),vec3d(.8,.8,.8),1.,REFL },
     { .5,  vec3d(-1,0,-3),     vec3d(.9,.9,.9),vec3d(.8,.8,.8),1.,REFL },

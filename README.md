@@ -1,14 +1,31 @@
 # Rendering Engine
 
+### Prerequisits & Execution
+
+The program is built using [SCons](https://scons.org/). For installation you can follow the [docs](https://scons.org/doc/production/HTML/scons-user/ch01s02.html). 
+
 ```bash
-# Build with scons
+# For building with scons run
 scons
-# Run
-./render
+```
+
+There is a bash file `run.sh` which compiles and runs the executable.
+```bash
 # Display help
 bash run.sh -h
 # Run with args
 bash run.sh -w 960 -h 720 -s 1000
+```
+
+Below is an overview of all the arguments that can be set.
+```
+-o    <file>    Place the output into <file>.
+-pt             Use the pathtracing algorithm. Raytracing is default.
+-w    <int>     Width of the output image.
+-h    <int>     Height of the output image.
+-vfov <int>     Vertical field of view.
+-s    <int>     Number of samples per pixel used in rendering algorithm.
+-maxd <int>     Maximum depth of the raytracing algorithm.
 ```
 
 ## Concepts
