@@ -24,9 +24,14 @@
 #ifndef CARBON_C_
 #define CARBON_C_ 
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <math.h>
+#include <omp.h>
+#include <vector>
+#include <execution>
+#include <algorithm>
 
 #define C_RGBA(r, g, b, a) ((((r)&0xFF)<<(8*0)) |\
                             (((g)&0xFF)<<(8*1)) |\

@@ -26,6 +26,8 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
+/* Multithreaded */
+#define MT                  0
 /* parse_args return codes: */
 #define ARG_HELP_R          1
 
@@ -43,7 +45,6 @@ static const char show_help[] =
   "  -s                  Number of samples per pixel used in rendering algorithm.\n"
   "  -maxd               Maximum depth of the raytracing algorithm.\n"
   "  -cuda               Use CUDA for rendering.\n"
-  "  -t                  Number of threads used in rendering algorithm.\n"
   "  -v                  Verbose mode.\n"
 ;
 
@@ -298,21 +299,40 @@ void pt(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene, cam_t *cam)
 
 void rt(uint32_t *img, uint32_t w, uint32_t h, c_scene_t *scene, cam_t *cam, int maxd)
 {
-  int id = 0;
   vec3d c;
-  double t, dt;
+  c_ray_t r = c_ray(vec3d(0, 0, 0), vec3d(0, 0, 0));
 
+#if MT
+  printf("Using multithreading.\n");
+  std::vector<uint32_t> hiter(h), witer(w);
+  std::iota(witer.begin(), witer.end(), 0);
+  std::iota(hiter.begin(), hiter.end(), 0);
+
+  std::for_each(std::execution::par, std::begin(hiter), std::end(hiter), 
+    [&](uint32_t j) 
+    {
+      for (int i = 0; i < w; ++i, c=vec3d(0, 0, 0)) {
+        for (int s = 0; s < cam->spp; ++s) {
+          r = cam->get_ray(i, j);
+          c = c + ray_color(r, scene, 0, maxd);
+        }
+        c = c / cam->spp;
+        img[j*w + i] = C_RGBA(toInt(c.x), toInt(c.y), toInt(c.z), 255);
+      }
+    });
+#else
   for (int j = 0; j < h; ++j) {
     fprintf(stderr,"\r(rt) Rendering %5.2f%%", 100.* j / (h-1));
     for (int i = 0; i < w; ++i, c=vec3d(0, 0, 0)) {
-      for (int s = 0; s < cam->spp; ++s, t=0, dt=1e20, id=-1) {
-        c_ray r = cam->get_ray(i, j);
+      for (int s = 0; s < cam->spp; ++s) {
+        r = cam->get_ray(i, j);
         c = c + ray_color(r, scene, 0, maxd);
       }
       c = c / cam->spp;
       img[j*w + i] = C_RGBA(toInt(c.x), toInt(c.y), toInt(c.z), 255);
     }
   }
+#endif
 }
 
 int main(int argc, char **argv) 

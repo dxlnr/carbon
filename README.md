@@ -94,6 +94,21 @@ end for
 - Parallelism: Use multi-threading or GPU acceleration to trace multiple rays simultaneously.
 
 
+### Runtime
+
+Some Benchmarks
+
+| Mode | Args | Execution | CPU |
+|:-:|:-:|:-:|:-:|
+| single threaded | -w 3840 -h 2160 -s 10  | 38.29 s | Intel(R) Core(TM) i7-1065G7 CPU @ 1.30GHz
+
+#### Parallelism
+
+- Threading with `std::thread`
+- OpenMP
+- MPI (Message Passing Interface)
+- GPU Acceleration with CUDA (NVIDIA) or OpenCL
+
 ## Notes
 - [Scratchapixel 3.0](https://www.scratchapixel.com/): Introduces to computer graphics
 - [Ray Tracing in One Weekend: The Book Series](https://raytracing.github.io/)
