@@ -1,6 +1,8 @@
 *.o
 .sconsign.dblite
-render
+carbon
+# build directory
+build
 
 # images
 *.png
